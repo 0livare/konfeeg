@@ -1,49 +1,21 @@
-export type ConfigEntryBase<T, E> = {
+import type { Apply, TypeLambda } from "./util-types.js"
+
+export type EnvName<E extends TypeLambda> = keyof Apply<E, any> & string
+
+export type ConfigEntryBase<T, E extends TypeLambda> = {
   doc: string
   optional?: boolean
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-} & (WhichEnvsAreRequired<T> | { value: T } | {}) &
+} & (Apply<E, T> | { value: T } | {}) &
   (
     | { processEnv: string; importMetaEnv?: never }
     | { importMetaEnv: string; processEnv?: never }
     | { processEnv?: never; importMetaEnv?: never }
   )
 
-export type StringEntry = ConfigEntryBase<string> & {
-  format: StringConstructor
-  default?: string
+export type ConfigGroup<E extends TypeLambda> = {
+  [key: string]: ConfigEntry<any, E> | ConfigGroup<E>
 }
-
-export type NumberEntry = ConfigEntryBase<number> & {
-  format: NumberConstructor
-  default?: number
-}
-
-export type BooleanEntry = ConfigEntryBase<boolean> & {
-  format: BooleanConstructor
-  default?: boolean
-}
-
-export type ArrayEntry<T> = ConfigEntryBase<T[]> & {
-  format: ArrayConstructor
-  default?: T[]
-}
-
-export type EnumEntry<T> = ConfigEntryBase<T> & {
-  format: T[]
-  default?: T
-}
-
-export type UrlEntry = ConfigEntryBase<string> & {
-  format: 'url'
-  default?: string
-}
-
-export type UntypedEntry = ConfigEntryBase<any> & { format?: never; default?: any }
-
-export type ConfigEntry<T> = UntypedEntry | StringEntry | NumberEntry | BooleanEntry | ArrayEntry<T> | EnumEntry<T> | UrlEntry
-
-export type ConfigGroup = { [key: string]: ConfigEntry<any> | ConfigGroup }
 
 // prettier-ignore
 export type ResolveEntryType<E> =
@@ -56,5 +28,55 @@ export type ResolveEntryType<E> =
   any
 
 export type ResolveConfigGroup<G> = {
-  [K in keyof G]: G[K] extends { doc: string } ? ResolveEntryType<G[K]> : ResolveConfigGroup<G[K]>
+  [K in keyof G]: G[K] extends { doc: string }
+    ? ResolveEntryType<G[K]>
+    : ResolveConfigGroup<G[K]>
+}
+
+//
+// Format validation
+//
+
+export type ConfigEntry<T, E extends TypeLambda> =
+  | UntypedEntry<E>
+  | StringEntry<E>
+  | NumberEntry<E>
+  | BooleanEntry<E>
+  | ArrayEntry<T, E>
+  | EnumEntry<T, E>
+  | UrlEntry<E>
+
+type StringEntry<E extends TypeLambda> = ConfigEntryBase<string, E> & {
+  format: StringConstructor
+  default?: string
+}
+
+type NumberEntry<E extends TypeLambda> = ConfigEntryBase<number, E> & {
+  format: NumberConstructor
+  default?: number
+}
+
+type BooleanEntry<E extends TypeLambda> = ConfigEntryBase<boolean, E> & {
+  format: BooleanConstructor
+  default?: boolean
+}
+
+type ArrayEntry<T, E extends TypeLambda> = ConfigEntryBase<T[], E> & {
+  format: ArrayConstructor
+  default?: T[]
+}
+
+type EnumEntry<T, E extends TypeLambda> = ConfigEntryBase<T, E> & {
+  format: T[]
+  default?: T
+}
+
+type UrlEntry<E extends TypeLambda> = ConfigEntryBase<string, E> & {
+  format: "url"
+  default?: string
+}
+
+type UntypedEntry<E extends TypeLambda> = ConfigEntryBase<any, E> & {
+  format?: never
+  default?: any
 }
