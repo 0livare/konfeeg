@@ -2,7 +2,11 @@
 
 Validated, strongly-typed config for Node and the browser. Define a schema once; values are resolved, coerced, and validated at startup — missing or invalid values throw immediately.
 
-> **Note:** Throws at startup if any required value is missing or fails format validation — broken `.env` files surface immediately, not at runtime.
+> API is inspired by [convict](https://github.com/mozilla/node-convict/tree/master/packages/convict), but this package:
+>
+> - works in the browser (as well as node)
+> - supports environment-specific values without requiring use of global env vars
+> - supports `import.meta.env` (e.g. for Vite)
 
 ---
 
@@ -11,7 +15,7 @@ Validated, strongly-typed config for Node and the browser. Define a schema once;
 ```ts
 import { createEnvironmentConfig } from "konfeeg"
 
-// 1. Declare your environments (required vs optional)
+// 1. Declare the names of your environments
 type MyEnvs = {
   dev?: unknown // optional (?) = per-env value may be omitted
   staging: unknown // required = must supply a value
@@ -49,20 +53,38 @@ config.apiUrl // string (validated as URL)
 config.mongo.dbName // string
 ```
 
+> [!important]
+> The above example hardcodes the active environment (`"staging"`) for clarity, but you'll want that to be dynamic in a real app:
+>
+> ```ts
+> type WhichEnvsAreRequired = {
+>   local?: unknown // optional (?) = per-env value may be omitted
+>   nonprod: unknown // required = must supply a value
+>   prod: unknown
+> }
+>
+> type AppEnvironment = keyof WhichEnvsAreRequired // "local" | "nonprod" | "prod"
+>
+> const appEnv = import.meta.env.VITE_APP_ENV as AppEnvironment
+> if (!appEnv) throw new Error("VITE_APP_ENV is required")
+>
+> const config = createEnvironmentConfig<WhichEnvsAreRequired>()(appEnv, { ... })
+> ```
+
 ---
 
 ## Schema fields
 
-| Field                        | Required | Description                                                            |
-| ---------------------------- | -------- | ---------------------------------------------------------------------- |
-| `doc`                        | required | Human-readable description                                             |
-| `format`                     | required | Validation format — see below                                          |
-| `value`                      | optional | Constant shared across all environments (lowest priority)              |
-| `processEnv`                 | optional | `process.env` key — runtime override (highest priority)                |
-| `importMetaEnv`              | optional | `import.meta.env` key — runtime override (highest priority)            |
-| `optional`                   | optional | When `true`, missing value resolves to `undefined` instead of throwing |
-| `default`                    | optional | Fallback when `optional: true` and no value is found                   |
-| env keys (`dev`, `staging`…) | optional | Per-environment value overrides                                        |
+| Field                             | Required | Description                                                                      |
+| --------------------------------- | -------- | -------------------------------------------------------------------------------- |
+| `doc`                             | required | Human-readable description                                                       |
+| `format`                          | required | Validation format — see below                                                    |
+| `value`                           | optional | Constant shared across all environments (lowest priority)                        |
+| `processEnv`                      | optional | `process.env` key — runtime override (highest priority)                          |
+| `importMetaEnv`                   | optional | `import.meta.env` key — runtime override (highest priority)                      |
+| `optional`                        | optional | When `true`, missing value resolves to `undefined` instead of throwing           |
+| `default`                         | optional | Fallback when `optional: true` and no value is found                             |
+| env keys (e.g. `dev`, `staging`…) | optional | Per-environment value overrides. _(These are the env names that you pass in in)_ |
 
 ---
 
@@ -90,21 +112,6 @@ When multiple sources are declared on the same entry, the highest-priority sourc
 | 3 — highest | `processEnv` / `importMetaEnv`     | Secrets, local overrides         |
 | 2           | Per-env fields (`dev`, `staging`…) | Environment-specific values      |
 | 1 — lowest  | `value`                            | Constants shared across all envs |
-
----
-
-## Defining environments
-
-Declare a plain object type. Required properties mean every entry that supplies per-env values must include that env. Optional properties (`?`) may be omitted.
-
-```ts
-type MyEnvs = {
-  dev?: unknown // optional — per-env value may be omitted
-  integ?: unknown
-  staging: unknown // required — every entry must supply a value
-  production: unknown
-}
-```
 
 ---
 

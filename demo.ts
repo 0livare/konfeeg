@@ -7,6 +7,8 @@ type MyEnvs = {
   production: unknown
 }
 
+type MyEnvNames = Prettify<keyof MyEnvs> //  "dev" | "integ" | "staging" | "production"
+
 const config = createEnvironmentConfig<MyEnvs>()(
   "dev",
   {
@@ -65,3 +67,7 @@ console.log(config.aws.region)
 console.log(config.aws.cognito.userPoolId)
 console.log(config.mongo.connectionString)
 console.log(config.port)
+
+//
+
+type Prettify<T> = { [K in keyof T]: T[K] } & {}

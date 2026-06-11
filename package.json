@@ -16,7 +16,8 @@
     "test": "vitest --run",
     "types": "tsc",
     "format": "prettier --write .",
-    "pr": "tsc && prettier --check . && pnpm run test && pnpm run build"
+    "pr": "tsc && prettier --check . && pnpm run test && pnpm run build",
+    "pub": "npx bumpp"
   },
   "devDependencies": {
     "prettier": "^3.8.4",
