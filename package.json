@@ -1,17 +1,22 @@
 {
   "name": "configee",
   "version": "0.0.0",
-  "description": "",
-  "author": "",
+  "description": "Build a validated, strongly-typed config object, and use it everywhere.",
+  "author": "Zach Olivare <https://github.com/0livare>",
   "license": "ISC",
+  "repository": "https://github.com/0livare/configee",
   "type": "module",
   "main": "dist/index.mjs",
   "module": "dist/index.mjs",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsdown lib/index.ts",
     "test": "vitest --run",
     "types": "tsc",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "pr": "tsc && prettier --check . && pnpm run test && pnpm run build"
   },
   "devDependencies": {
     "prettier": "^3.8.4",
@@ -26,6 +31,8 @@
     "configuration",
     "typescript",
     "type-safe",
-    "validation"
+    "validation",
+    "browser",
+    "node"
   ]
 }
