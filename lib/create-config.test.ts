@@ -5,8 +5,10 @@ import { createEnvironmentConfig } from "./index.js"
 declare const process: { env: Record<string, string | undefined> }
 
 type TestEnvs = {
-  required: "nonprod" | "prod"
-  optional: "local" | "sandbox"
+  local?: unknown
+  sandbox?: unknown
+  nonprod: unknown
+  prod: unknown
 }
 
 const testCreateConfig = createEnvironmentConfig<TestEnvs>()

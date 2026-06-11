@@ -1,8 +1,8 @@
-import type { EnvName, EnvsDecl, PerEnv } from "./util-types.js"
+import type { EnvName, EnvsShape, PerEnv } from "./util-types.js"
 
 // Every env key must be absent. Used by the "no per-env keys" arm so it
 // doesn't structurally subsume the "per-env required" arm.
-type NoEnvKeys<E extends EnvsDecl> = { [K in EnvName<E>]?: never }
+type NoEnvKeys<E extends EnvsShape> = { [K in EnvName<E>]?: never }
 
 // processEnv and importMetaEnv are mutually exclusive; both may also be absent.
 type RuntimeSourceOptional<T> =
@@ -19,16 +19,16 @@ type ValueSourceRequired<T> =
 // Per-env values are all-or-nothing for required envs. If an entry supplies
 // any env-named key (required or optional), it must supply all required
 // env-named keys. Otherwise it must declare a value source explicitly.
-type ValueSource<T, E extends EnvsDecl> =
+type ValueSource<T, E extends EnvsShape> =
   | (PerEnv<E, T> & RuntimeSourceOptional<T>)
   | (NoEnvKeys<E> & ValueSourceRequired<T>)
 
-export type ConfigEntryBase<T, E extends EnvsDecl> = {
+export type ConfigEntryBase<T, E extends EnvsShape> = {
   doc: string
   optional?: boolean
 } & ValueSource<T, E>
 
-export type ConfigGroup<E extends EnvsDecl> = {
+export type ConfigGroup<E extends EnvsShape> = {
   [key: string]: ConfigEntry<any, E> | ConfigGroup<E>
 }
 
@@ -52,7 +52,7 @@ export type ResolveConfigGroup<G> = {
 // Format validation
 //
 
-export type ConfigEntry<T, E extends EnvsDecl> =
+export type ConfigEntry<T, E extends EnvsShape> =
   | UntypedEntry<E>
   | StringEntry<E>
   | NumberEntry<E>
@@ -61,37 +61,37 @@ export type ConfigEntry<T, E extends EnvsDecl> =
   | EnumEntry<T, E>
   | UrlEntry<E>
 
-type StringEntry<E extends EnvsDecl> = ConfigEntryBase<string, E> & {
+type StringEntry<E extends EnvsShape> = ConfigEntryBase<string, E> & {
   format: StringConstructor
   default?: string
 }
 
-type NumberEntry<E extends EnvsDecl> = ConfigEntryBase<number, E> & {
+type NumberEntry<E extends EnvsShape> = ConfigEntryBase<number, E> & {
   format: NumberConstructor
   default?: number
 }
 
-type BooleanEntry<E extends EnvsDecl> = ConfigEntryBase<boolean, E> & {
+type BooleanEntry<E extends EnvsShape> = ConfigEntryBase<boolean, E> & {
   format: BooleanConstructor
   default?: boolean
 }
 
-type ArrayEntry<T, E extends EnvsDecl> = ConfigEntryBase<T[], E> & {
+type ArrayEntry<T, E extends EnvsShape> = ConfigEntryBase<T[], E> & {
   format: ArrayConstructor
   default?: T[]
 }
 
-type EnumEntry<T, E extends EnvsDecl> = ConfigEntryBase<T, E> & {
+type EnumEntry<T, E extends EnvsShape> = ConfigEntryBase<T, E> & {
   format: T[]
   default?: T
 }
 
-type UrlEntry<E extends EnvsDecl> = ConfigEntryBase<string, E> & {
+type UrlEntry<E extends EnvsShape> = ConfigEntryBase<string, E> & {
   format: "url"
   default?: string
 }
 
-type UntypedEntry<E extends EnvsDecl> = ConfigEntryBase<any, E> & {
+type UntypedEntry<E extends EnvsShape> = ConfigEntryBase<any, E> & {
   format?: never
   default?: any
 }

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { EnvsDecl, EnvName } from "./util-types.js"
+import type { EnvsShape, EnvName } from "./util-types.js"
 import type { ConfigGroup, ResolveConfigGroup } from "./types.js"
 import { validateAndCoerce } from "./format.js"
 
@@ -8,17 +8,21 @@ import { validateAndCoerce } from "./format.js"
  * Create a resolved, validated config for the given environment.
  *
  * Curried so the envs declaration is bound on the first call and the
- * schema is inferred (giving you autocomplete) on the second call:
+ * schema is inferred (giving you autocomplete) on the second call.
  *
  * ```ts
- * type MyEnvs = { required: 'staging' | 'production'; optional: 'dev' }
+ * type MyEnvs = {
+ *   dev?: unknown
+ *   staging: unknown
+ *   production: unknown
+ * }
  * const config = createEnvironmentConfig<MyEnvs>()('dev', {
  *   port: { doc: 'Port', format: Number, value: 3000 },
  * })
  * config.port // number
  * ```
  */
-export function createEnvironmentConfig<E extends EnvsDecl>() {
+export function createEnvironmentConfig<E extends EnvsShape>() {
   return <G extends ConfigGroup<E>>(
     env: EnvName<E>,
     inputConfig: G,
@@ -26,7 +30,7 @@ export function createEnvironmentConfig<E extends EnvsDecl>() {
     buildConfig<E, G>(env, inputConfig)
 }
 
-function buildConfig<E extends EnvsDecl, G extends ConfigGroup<E>>(
+function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
   env: EnvName<E>,
   inputConfig: G,
 ): ResolveConfigGroup<G> & { env: EnvName<E> } {
