@@ -8,7 +8,7 @@
   "main": "dist/index.mjs",
   "module": "dist/index.mjs",
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown lib/index.ts",
     "test": "vitest --run",
     "types": "tsc",
     "format": "prettier --write ."
