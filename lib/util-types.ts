@@ -42,3 +42,46 @@ export type EnvName<E extends EnvsShape> = keyof E & string
 export type PerEnv<E extends EnvsShape, T> = { [K in RequiredKeys<E>]: T } & {
   [K in OptionalKeys<E>]?: T
 }
+
+/**
+ * Map of environment names to a fallback environment name.
+ *
+ * If a per-environment value is not declared for the active environment on
+ * a given config entry, resolution falls back to the value declared for the
+ * environment named here. Fallbacks chain transitively until a value is
+ * found or the chain ends.
+ *
+ * Both keys and values must be names declared on the envs shape `E`.
+ *
+ * @example
+ * ```ts
+ * type MyEnvs = {
+ *   dev?: unknown
+ *   integ?: unknown
+ *   staging: unknown
+ *   production: unknown
+ * }
+ *
+ * // When running in `dev`, fall back to `integ`; if `integ` is also
+ * // missing a value, fall back to `staging`.
+ * const fallbacks: Fallbacks<MyEnvs> = {
+ *   dev: 'integ',
+ *   integ: 'staging',
+ * }
+ * ```
+ */
+export type Fallbacks<E extends EnvsShape> = Partial<
+  Record<EnvName<E>, EnvName<E>>
+>
+
+/**
+ * Options accepted as the third argument to `createEnvironmentConfig` (and
+ * the second argument to `defineEnvironmentConfig`).
+ */
+export type CreateConfigOptions<E extends EnvsShape> = {
+  /**
+   * Map of environment names to a fallback environment name. See
+   * {@link Fallbacks} for details.
+   */
+  fallbacks?: Fallbacks<E>
+}

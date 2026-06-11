@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { EnvsShape, EnvName } from "./util-types.js"
+import type {
+  EnvsShape,
+  EnvName,
+  CreateConfigOptions,
+  Fallbacks,
+} from "./util-types.js"
 import type { ConfigGroup, ResolveConfigGroup } from "./types.js"
 import { validateAndCoerce } from "./format.js"
 
@@ -10,6 +15,9 @@ import { validateAndCoerce } from "./format.js"
  * Curried so the envs declaration is bound on the first call and the
  * schema is inferred (giving you autocomplete) on the second call.
  *
+ * @typeParam E - The envs shape describing required/optional environments.
+ *
+ * @example
  * ```ts
  * type MyEnvs = {
  *   dev?: unknown
@@ -21,20 +29,45 @@ import { validateAndCoerce } from "./format.js"
  * })
  * config.port // number
  * ```
+ *
+ * @example Fallback environments
+ * ```ts
+ * // When running in `dev`, any entry that does not declare a `dev` value
+ * // falls back to the entry's `integ` value.
+ * const config = createEnvironmentConfig<MyEnvs>()(
+ *   'dev',
+ *   {
+ *     apiUrl: {
+ *       doc: 'API URL',
+ *       format: 'url',
+ *       integ: 'https://integ.example.com',
+ *       staging: 'https://staging.example.com',
+ *       production: 'https://api.example.com',
+ *     },
+ *   },
+ *   { fallbacks: { dev: 'integ' } },
+ * )
+ * ```
  */
 export function createEnvironmentConfig<E extends EnvsShape>() {
   return <G extends ConfigGroup<E>>(
     env: EnvName<E>,
     inputConfig: G,
+    options?: CreateConfigOptions<E>,
   ): ResolveConfigGroup<G> & { env: EnvName<E> } =>
-    buildConfig<E, G>(env, inputConfig)
+    buildConfig<E, G>(env, inputConfig, options)
 }
 
 function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
   env: EnvName<E>,
   inputConfig: G,
+  options?: CreateConfigOptions<E>,
 ): ResolveConfigGroup<G> & { env: EnvName<E> } {
   const errors: string[] = []
+
+  // Resolve the per-environment lookup chain once for the active env.
+  // Throws synchronously on a circular fallback chain.
+  const envChain = resolveFallbackChain<E>(env, options?.fallbacks)
 
   function processConfig(
     config: ConfigGroup<E>,
@@ -64,7 +97,7 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
       //  Priority │ Source
       //  ─────────┼────────────────────────────────────────────────────────────────
       //  1 (low)  │ Static `value` — same value across all environments
-      //  2        │ Per-environment field
+      //  2        │ Per-environment field, walking the fallback chain
       //           │ — overrides the static value for that specific environment
       //  3 (high) │ Runtime env var via `processEnv` or `importMetaEnv`
       //           │ — always wins; intended for secrets and local dev overrides
@@ -72,9 +105,15 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
       // Priority 1: static value (lowest precedence)
       let value: any = "value" in configEntry ? configEntry.value : undefined
 
-      // Priority 2: per-environment value (overrides static)
-      const envValue = configEntry[env]
-      if (envValue !== undefined) value = envValue
+      // Priority 2: per-environment value, walking the fallback chain.
+      // The first env in the chain with a defined value wins.
+      for (const candidateEnv of envChain) {
+        const envValue = configEntry[candidateEnv]
+        if (envValue !== undefined) {
+          value = envValue
+          break
+        }
+      }
 
       // Priority 3: runtime env var (highest precedence — always wins when defined)
       if ("processEnv" in configEntry) {
@@ -144,4 +183,33 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
 
   outputConfig.env = env
   return outputConfig as ResolveConfigGroup<G> & { env: EnvName<E> }
+}
+
+/**
+ * Build the ordered list of environments to consult for per-environment
+ * value resolution. The active env is always first; each subsequent entry
+ * is the fallback target declared for the previous env. Throws if the
+ * chain is cyclic.
+ */
+function resolveFallbackChain<E extends EnvsShape>(
+  env: EnvName<E>,
+  fallbacks: Fallbacks<E> | undefined,
+): EnvName<E>[] {
+  const chain: EnvName<E>[] = [env]
+  if (!fallbacks) return chain
+
+  const seen = new Set<string>([env])
+  let current: EnvName<E> = env
+  while (fallbacks[current] !== undefined) {
+    const next = fallbacks[current] as EnvName<E>
+    if (seen.has(next)) {
+      throw new Error(
+        `Circular fallback chain detected: ${[...chain, next].join(" -> ")}`,
+      )
+    }
+    seen.add(next)
+    chain.push(next)
+    current = next
+  }
+  return chain
 }

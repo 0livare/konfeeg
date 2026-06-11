@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it } from "vitest"
-import { createEnvironmentConfig } from "./index.js"
+import { createEnvironmentConfig, defineEnvironmentConfig } from "./index.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -429,5 +429,337 @@ describe("optional and defaults", () => {
       },
     })
     expect(config.key).toBe("fallback")
+  })
+})
+
+describe("environment fallbacks", () => {
+  it("falls back from the active env to the configured fallback env", () => {
+    const config = testCreateConfig(
+      "local",
+      {
+        key: {
+          doc: "test",
+          format: String,
+          sandbox: "sandbox-value",
+          nonprod: "nonprod-value",
+          prod: "prod-value",
+        },
+      },
+      { fallbacks: { local: "sandbox" } },
+    )
+    expect(config.key).toBe("sandbox-value")
+  })
+
+  it("prefers the active env's own value over the fallback", () => {
+    const config = testCreateConfig(
+      "local",
+      {
+        key: {
+          doc: "test",
+          format: String,
+          local: "local-value",
+          sandbox: "sandbox-value",
+          nonprod: "nonprod-value",
+          prod: "prod-value",
+        },
+      },
+      { fallbacks: { local: "sandbox" } },
+    )
+    expect(config.key).toBe("local-value")
+  })
+
+  it("chains transitively through multiple fallback hops", () => {
+    const config = testCreateConfig(
+      "local",
+      {
+        key: {
+          doc: "test",
+          format: String,
+          nonprod: "nonprod-value",
+          prod: "prod-value",
+        },
+      },
+      { fallbacks: { local: "sandbox", sandbox: "nonprod" } },
+    )
+    expect(config.key).toBe("nonprod-value")
+  })
+
+  it("stops walking the chain at the first env with a defined value", () => {
+    const config = testCreateConfig(
+      "local",
+      {
+        key: {
+          doc: "test",
+          format: String,
+          sandbox: "sandbox-value",
+          nonprod: "nonprod-value",
+          prod: "prod-value",
+        },
+      },
+      { fallbacks: { local: "sandbox", sandbox: "nonprod" } },
+    )
+    expect(config.key).toBe("sandbox-value")
+  })
+
+  it("does not affect runs whose active env is not the fallback origin", () => {
+    const config = testCreateConfig(
+      "sandbox",
+      {
+        key: {
+          doc: "test",
+          format: String,
+          sandbox: "sandbox-value",
+          nonprod: "nonprod-value",
+          prod: "prod-value",
+        },
+      },
+      { fallbacks: { local: "sandbox" } },
+    )
+    expect(config.key).toBe("sandbox-value")
+  })
+
+  it("still falls back to the static value when no env in the chain has a value", () => {
+    const config = testCreateConfig(
+      "local",
+      {
+        key: {
+          doc: "test",
+          format: String,
+          value: "static-value",
+        },
+      },
+      { fallbacks: { local: "sandbox" } },
+    )
+    expect(config.key).toBe("static-value")
+  })
+
+  it("lets runtime env vars still take precedence over fallback values", () => {
+    process.env.TEST_FB_RUNTIME = "runtime-value"
+    const config = testCreateConfig(
+      "local",
+      {
+        key: {
+          doc: "test",
+          format: String,
+          processEnv: "TEST_FB_RUNTIME",
+          sandbox: "sandbox-value",
+          nonprod: "nonprod-value",
+          prod: "prod-value",
+        },
+      },
+      { fallbacks: { local: "sandbox" } },
+    )
+    expect(config.key).toBe("runtime-value")
+    delete process.env.TEST_FB_RUNTIME
+  })
+
+  it("uses the fallback when processEnv is declared but the runtime var is unset", () => {
+    delete process.env.TEST_FB_UNSET
+    const config = testCreateConfig(
+      "local",
+      {
+        key: {
+          doc: "test",
+          format: String,
+          processEnv: "TEST_FB_UNSET",
+          sandbox: "sandbox-value",
+          nonprod: "nonprod-value",
+          prod: "prod-value",
+        },
+      },
+      { fallbacks: { local: "sandbox" } },
+    )
+    expect(config.key).toBe("sandbox-value")
+  })
+
+  it("applies fallbacks per-entry across a mixed schema", () => {
+    const config = testCreateConfig(
+      "local",
+      {
+        hasOwn: {
+          doc: "test",
+          format: String,
+          local: "local-only",
+          nonprod: "nonprod",
+          prod: "prod",
+        },
+        usesFallback: {
+          doc: "test",
+          format: String,
+          sandbox: "sandbox-value",
+          nonprod: "nonprod",
+          prod: "prod",
+        },
+        usesStatic: {
+          doc: "test",
+          format: String,
+          value: "shared",
+        },
+      },
+      { fallbacks: { local: "sandbox" } },
+    )
+    expect(config.hasOwn).toBe("local-only")
+    expect(config.usesFallback).toBe("sandbox-value")
+    expect(config.usesStatic).toBe("shared")
+  })
+
+  it("applies fallbacks inside nested groups", () => {
+    const config = testCreateConfig(
+      "local",
+      {
+        services: {
+          api: {
+            doc: "test",
+            format: "url",
+            sandbox: "https://sandbox.example.com",
+            nonprod: "https://nonprod.example.com",
+            prod: "https://prod.example.com",
+          },
+        },
+      },
+      { fallbacks: { local: "sandbox" } },
+    )
+    expect(config.services.api).toBe("https://sandbox.example.com")
+  })
+
+  it("throws when the fallback chain forms a direct self-cycle", () => {
+    expect(() =>
+      testCreateConfig(
+        "local",
+        {
+          key: { doc: "test", format: String, value: "x" },
+        },
+        { fallbacks: { local: "local" } },
+      ),
+    ).toThrow(/circular fallback chain/i)
+  })
+
+  it("throws when the fallback chain forms a multi-hop cycle", () => {
+    expect(() =>
+      testCreateConfig(
+        "local",
+        {
+          key: { doc: "test", format: String, value: "x" },
+        },
+        { fallbacks: { local: "sandbox", sandbox: "local" } },
+      ),
+    ).toThrow(/circular fallback chain/i)
+  })
+
+  it("includes the cyclical chain in the error message", () => {
+    expect(() =>
+      testCreateConfig(
+        "local",
+        {
+          key: { doc: "test", format: String, value: "x" },
+        },
+        { fallbacks: { local: "sandbox", sandbox: "local" } },
+      ),
+    ).toThrow("local -> sandbox -> local")
+  })
+
+  it("still throws when neither the active env nor the fallback has a value", () => {
+    expect(() =>
+      testCreateConfig(
+        "local",
+        {
+          key: {
+            doc: "test",
+            format: String,
+            nonprod: "nonprod-value",
+            prod: "prod-value",
+          },
+        },
+        { fallbacks: { local: "sandbox" } },
+      ),
+    ).toThrow(/no value source declared/i)
+  })
+
+  it("throws missing-required when processEnv is declared but no env in the chain resolves", () => {
+    delete process.env.TEST_FB_CHAIN_MISS
+    expect(() =>
+      testCreateConfig(
+        "local",
+        {
+          key: {
+            doc: "test",
+            format: String,
+            processEnv: "TEST_FB_CHAIN_MISS",
+            nonprod: "nonprod-value",
+            prod: "prod-value",
+          },
+        },
+        { fallbacks: { local: "sandbox" } },
+      ),
+    ).toThrow(/missing required config value/i)
+  })
+
+  it("treats an empty fallbacks map as a no-op", () => {
+    const config = testCreateConfig(
+      "local",
+      {
+        key: {
+          ...baseEntry("local-value"),
+          format: String,
+        },
+      },
+      { fallbacks: {} },
+    )
+    expect(config.key).toBe("local-value")
+  })
+
+  it("uses the optional default when fallback chain also yields no value", () => {
+    delete process.env.TEST_FB_OPTIONAL
+    const config = testCreateConfig(
+      "local",
+      {
+        key: {
+          doc: "test",
+          format: String,
+          optional: true,
+          default: "default-value",
+          processEnv: "TEST_FB_OPTIONAL",
+          nonprod: "nonprod-value",
+          prod: "prod-value",
+        },
+      },
+      { fallbacks: { local: "sandbox" } },
+    )
+    expect(config.key).toBe("default-value")
+  })
+
+  it("works with defineEnvironmentConfig", () => {
+    const build = defineEnvironmentConfig<TestEnvs>()(
+      {
+        key: {
+          doc: "test",
+          format: String,
+          sandbox: "sandbox-value",
+          nonprod: "nonprod-value",
+          prod: "prod-value",
+        },
+      },
+      { fallbacks: { local: "sandbox" } },
+    )
+    expect(build("local").key).toBe("sandbox-value")
+    expect(build("sandbox").key).toBe("sandbox-value")
+    expect(build("nonprod").key).toBe("nonprod-value")
+  })
+
+  it("preserves the active env on the resolved config even when values come from a fallback", () => {
+    const config = testCreateConfig(
+      "local",
+      {
+        key: {
+          doc: "test",
+          format: String,
+          sandbox: "sandbox-value",
+          nonprod: "nonprod-value",
+          prod: "prod-value",
+        },
+      },
+      { fallbacks: { local: "sandbox" } },
+    )
+    expect(config.env).toBe("local")
   })
 })

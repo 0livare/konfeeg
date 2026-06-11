@@ -1,4 +1,4 @@
-import type { EnvsShape, EnvName } from "./util-types.js"
+import type { EnvsShape, EnvName, CreateConfigOptions } from "./util-types.js"
 import type { ConfigGroup, ResolveConfigGroup } from "./types.js"
 import { createEnvironmentConfig } from "./create-config.js"
 
@@ -7,6 +7,9 @@ import { createEnvironmentConfig } from "./create-config.js"
  * environment later. Useful when the active environment is not known at
  * schema-definition time.
  *
+ * @typeParam E - The envs shape describing required/optional environments.
+ *
+ * @example
  * ```ts
  * type MyEnvs = {
  *   dev?: unknown
@@ -18,12 +21,22 @@ import { createEnvironmentConfig } from "./create-config.js"
  * })
  * const config = buildConfig('dev')
  * ```
+ *
+ * @example Fallback environments
+ * ```ts
+ * const buildConfig = defineEnvironmentConfig<MyEnvs>()(
+ *   { apiUrl: { doc: 'API URL', format: 'url', staging: 'https://staging' } },
+ *   { fallbacks: { dev: 'staging' } },
+ * )
+ * const config = buildConfig('dev') // apiUrl resolved from `staging`
+ * ```
  */
 export function defineEnvironmentConfig<E extends EnvsShape>() {
   const create = createEnvironmentConfig<E>()
   return <G extends ConfigGroup<E>>(
       inputConfig: G,
+      options?: CreateConfigOptions<E>,
     ): ((env: EnvName<E>) => ResolveConfigGroup<G> & { env: EnvName<E> }) =>
     (env: EnvName<E>) =>
-      create(env, inputConfig)
+      create(env, inputConfig, options)
 }

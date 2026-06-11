@@ -140,3 +140,72 @@ const buildConfig = defineEnvironmentConfig<MyEnvs>()({
 
 const config = buildConfig(process.env.APP_ENV as any)
 ```
+
+---
+
+## Options
+
+Both `createEnvironmentConfig` and `defineEnvironmentConfig` accept an optional `options` object as the last argument to their schema-binding call.
+
+| Argument position             | `createEnvironmentConfig` | `defineEnvironmentConfig` |
+| ----------------------------- | ------------------------- | ------------------------- |
+| Schema-binding call signature | `(env, schema, options?)` | `(schema, options?)`      |
+
+```ts
+type CreateConfigOptions<E extends EnvsShape> = {
+  fallbacks?: Fallbacks<E>
+}
+
+type Fallbacks<E extends EnvsShape> = Partial<Record<EnvName<E>, EnvName<E>>>
+```
+
+### `fallbacks` — environment fallback chains
+
+When resolving a per-environment value, if the active environment has no value declared on a given entry, resolution can fall back to a different environment's value. Fallbacks chain transitively: if `A` falls back to `B` and `B` falls back to `C`, then `A` will use `C`'s value when neither `A` nor `B` has one.
+
+Fallbacks only affect the **per-environment** resolution step (Priority 2). The static `value`, `processEnv`, and `importMetaEnv` sources are unaffected — runtime env vars still win, and a static `value` is still used when no env in the chain resolves.
+
+```ts
+type MyEnvs = {
+  dev?: unknown
+  integ?: unknown
+  staging: unknown
+  production: unknown
+}
+
+const config = createEnvironmentConfig<MyEnvs>()(
+  "dev",
+  {
+    apiUrl: {
+      doc: "API URL",
+      format: "url",
+      // No `dev` field — resolves via fallback to `integ`.
+      integ: "https://integ.example.com",
+      staging: "https://staging.example.com",
+      production: "https://api.example.com",
+    },
+  },
+  {
+    fallbacks: {
+      dev: "integ", // when running in dev, fall back to integ
+      integ: "staging", // chained: integ falls back further to staging
+    },
+  },
+)
+
+config.apiUrl // 'https://integ.example.com'
+```
+
+**Resolution order with fallbacks:**
+
+1. The active env's own per-environment field (e.g. `dev`)
+2. The fallback env named in `fallbacks[activeEnv]` (e.g. `integ`)
+3. The next fallback in the chain (e.g. `staging`), and so on
+4. Static `value`, if declared
+5. Runtime env var (`processEnv` / `importMetaEnv`) — always wins when defined, regardless of fallback resolution
+
+**Notes:**
+
+- Fallbacks only apply when the active env matches a key in the `fallbacks` map. Other envs resolve as if no fallback were configured.
+- A circular fallback chain (e.g. `{ dev: 'integ', integ: 'dev' }`) throws synchronously when the config is built, with the cycle path included in the error message.
+- The `env` property on the resolved config always reflects the **active** environment, not the env a value was sourced from.
