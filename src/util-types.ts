@@ -1,33 +1,33 @@
-export type Prettify<T> = { [K in keyof T]: T[K] } & {}
-
 /**
- * Higher-kinded type emulation: a type lambda has an `arg` input slot and an `out` result slot.
+ * Declaration of the environments a config supports.
  *
- * TypeScript has no higher-kinded types, so a generic type alias like
- * `WhichEnvsAreRequired<T>` cannot be passed _unapplied_ as a type argument.
- * The `TypeLambda` pattern emulates that: your interface acts as a function
- * from `this['arg']` (the value type) to `this['out']` (the per-environment
- * shape), and the library applies it internally.
- *
- * You only need to extend `TypeLambda` and set `out` — everything else is
- * handled for you.
+ * - `required`: union of env names where every entry must supply a value
+ *   (unless it uses `value`, `processEnv`, `importMetaEnv`, or `optional`).
+ * - `optional`: union of env names where per-environment values may be omitted.
  *
  * @example
  * ```ts
- * interface MyEnvs extends TypeLambda {
- *   readonly out: {
- *     dev?: this['arg']
- *     integ?: this['arg']
- *     staging: this['arg']
- *     production: this['arg']
- *   }
+ * type MyEnvs = {
+ *   required: 'staging' | 'production'
+ *   optional: 'dev' | 'integ'
  * }
  * ```
  */
-export interface TypeLambda {
-  readonly arg: unknown
-  readonly out: unknown
+export type EnvsDecl = {
+  required: string
+  optional?: string
 }
 
-/** Apply a type lambda to a concrete argument. */
-export type Apply<F extends TypeLambda, T> = (F & { readonly arg: T })["out"]
+/** Union of all environment names declared on `E` (required ∪ optional). */
+export type EnvName<E extends EnvsDecl> =
+  | E["required"]
+  | (E extends { optional: infer O extends string } ? O : never)
+
+/**
+ * Per-environment value shape for a value of type `T`:
+ * required envs are required, optional envs are optional.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export type PerEnv<E extends EnvsDecl, T> = {
+  [K in E["required"]]: T
+} & (E extends { optional: infer O extends string } ? { [K in O]?: T } : {})

@@ -1,19 +1,17 @@
-import type { Apply, TypeLambda } from "./util-types.js"
+import type { EnvsDecl, PerEnv } from "./util-types.js"
 
-export type EnvName<E extends TypeLambda> = keyof Apply<E, any> & string
-
-export type ConfigEntryBase<T, E extends TypeLambda> = {
+export type ConfigEntryBase<T, E extends EnvsDecl> = {
   doc: string
   optional?: boolean
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-} & (Apply<E, T> | { value: T } | {}) &
+} & (PerEnv<E, T> | { value: T } | {}) &
   (
     | { processEnv: string; importMetaEnv?: never }
     | { importMetaEnv: string; processEnv?: never }
     | { processEnv?: never; importMetaEnv?: never }
   )
 
-export type ConfigGroup<E extends TypeLambda> = {
+export type ConfigGroup<E extends EnvsDecl> = {
   [key: string]: ConfigEntry<any, E> | ConfigGroup<E>
 }
 
@@ -37,7 +35,7 @@ export type ResolveConfigGroup<G> = {
 // Format validation
 //
 
-export type ConfigEntry<T, E extends TypeLambda> =
+export type ConfigEntry<T, E extends EnvsDecl> =
   | UntypedEntry<E>
   | StringEntry<E>
   | NumberEntry<E>
@@ -46,37 +44,37 @@ export type ConfigEntry<T, E extends TypeLambda> =
   | EnumEntry<T, E>
   | UrlEntry<E>
 
-type StringEntry<E extends TypeLambda> = ConfigEntryBase<string, E> & {
+type StringEntry<E extends EnvsDecl> = ConfigEntryBase<string, E> & {
   format: StringConstructor
   default?: string
 }
 
-type NumberEntry<E extends TypeLambda> = ConfigEntryBase<number, E> & {
+type NumberEntry<E extends EnvsDecl> = ConfigEntryBase<number, E> & {
   format: NumberConstructor
   default?: number
 }
 
-type BooleanEntry<E extends TypeLambda> = ConfigEntryBase<boolean, E> & {
+type BooleanEntry<E extends EnvsDecl> = ConfigEntryBase<boolean, E> & {
   format: BooleanConstructor
   default?: boolean
 }
 
-type ArrayEntry<T, E extends TypeLambda> = ConfigEntryBase<T[], E> & {
+type ArrayEntry<T, E extends EnvsDecl> = ConfigEntryBase<T[], E> & {
   format: ArrayConstructor
   default?: T[]
 }
 
-type EnumEntry<T, E extends TypeLambda> = ConfigEntryBase<T, E> & {
+type EnumEntry<T, E extends EnvsDecl> = ConfigEntryBase<T, E> & {
   format: T[]
   default?: T
 }
 
-type UrlEntry<E extends TypeLambda> = ConfigEntryBase<string, E> & {
+type UrlEntry<E extends EnvsDecl> = ConfigEntryBase<string, E> & {
   format: "url"
   default?: string
 }
 
-type UntypedEntry<E extends TypeLambda> = ConfigEntryBase<any, E> & {
+type UntypedEntry<E extends EnvsDecl> = ConfigEntryBase<any, E> & {
   format?: never
   default?: any
 }

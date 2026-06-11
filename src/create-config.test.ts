@@ -1,20 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it } from "vitest"
-import { createEnvironmentConfig, type TypeLambda } from "./index.js"
-import type { ConfigGroup, EnvName, ResolveConfigGroup } from "./types.js"
+import { createEnvironmentConfig } from "./index.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
-type TestEnvsShape<T> = { local?: T; sandbox?: T; nonprod: T; prod: T }
-
-interface TestEnvs extends TypeLambda {
-  readonly out: TestEnvsShape<this["arg"]>
+type TestEnvs = {
+  required: "nonprod" | "prod"
+  optional: "local" | "sandbox"
 }
 
-const testCreateConfig = <G extends ConfigGroup<TestEnvs>>(
-  env: EnvName<TestEnvs>,
-  config: G,
-): ResolveConfigGroup<G> => createEnvironmentConfig<TestEnvs, G>(env, config)
+const testCreateConfig = createEnvironmentConfig<TestEnvs>()
 
 function baseEntry(value: any) {
   return {

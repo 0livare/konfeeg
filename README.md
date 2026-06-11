@@ -3,9 +3,13 @@
 Build a validated, strongly-typed config object for the current environment. Define your schema once; values are resolved, coerced, and validated at startup so missing or misconfigured values fail fast. Works in Node and the browser.
 
 ```ts
-createEnvironmentConfig<E>(env: EnvName<E>, config: ConfigGroup<E>): ResolveConfigGroup<G>
-defineEnvironmentConfig<E>(config: ConfigGroup<E>): (env: EnvName<E>) => ResolveConfigGroup<G>
+createEnvironmentConfig<E>()(env: EnvName<E>, config: ConfigGroup<E>): ResolvedConfig<G>
+defineEnvironmentConfig<E>()(config: ConfigGroup<E>): (env: EnvName<E>) => ResolvedConfig<G>
 ```
+
+Both functions are curried: the first call binds the envs declaration `E`,
+the second call infers the schema `G` from the literal you pass — that's
+what enables strongly-typed autocomplete on the resolved config object.
 
 > [!important]
 > Throws if any required value is missing or fails format validation. This surfaces broken `.env` files immediately rather than at runtime.
@@ -16,33 +20,31 @@ The resolved object always includes an `env` property set to the active environm
 
 ## Defining your environments
 
-You decide what your environments are called and which are required vs. optional. Environments are declared as a `TypeLambda` — an interface that maps a value type `T` onto the per-environment shape:
+You decide what your environments are called and which are required vs. optional. Environments are declared as a plain type with two unions — `required` and `optional`:
 
 ```ts
-import type { TypeLambda } from "configee"
+import type { EnvsDecl } from "configee"
 
-interface MyEnvs extends TypeLambda {
-  readonly out: {
-    dev?: this["arg"] // optional environment
-    integ?: this["arg"] // optional environment
-    staging: this["arg"] // required environment
-    production: this["arg"] // required environment
-  }
+type MyEnvs = {
+  required: "staging" | "production"
+  optional: "dev" | "integ"
 }
 ```
 
-- A **required** field means every config entry must supply a value for that environment (unless it has a `value`, `processEnv`, `importMetaEnv`, or is marked `optional`).
-- An **optional** field (`?`) means the environment may be omitted on any entry.
+- **`required`** env names: every config entry must supply a value for them (unless it has a `value`, `processEnv`, `importMetaEnv`, or is marked `optional`).
+- **`optional`** env names: per-environment values may be omitted on any entry. The `optional` field itself is optional — omit it if every env is required.
 
-Pass `MyEnvs` as the first type argument when you build a config:
+Pass `MyEnvs` as the type argument when you build a config. Note the trailing
+`()` — the function is curried so the schema can be inferred on the second
+call:
 
 ```ts
-const config = createEnvironmentConfig<MyEnvs>("production", {
+const config = createEnvironmentConfig<MyEnvs>()("production", {
   /* schema */
 })
 ```
 
-`EnvName<MyEnvs>` resolves to `'dev' | 'integ' | 'staging' | 'production'`.
+`EnvName<MyEnvs>` resolves to `'staging' | 'production' | 'dev' | 'integ'`.
 
 ---
 
@@ -80,7 +82,7 @@ When multiple sources are declared on the same entry, the highest-priority sourc
 | 2           | Per-environment fields         | Per-environment overrides of the static value   |
 | 3 — highest | `processEnv` / `importMetaEnv` | Secrets and local overrides supplied at runtime |
 
-The per-environment field names match the keys you declared on your `TypeLambda` (e.g. `dev`, `integ`, `staging`, `production`).
+The per-environment field names match the names you listed in `required` and `optional` on your envs declaration (e.g. `dev`, `integ`, `staging`, `production`).
 
 **Example:** an entry with `value: 'default'`, `staging: 'staging-specific'`, and `processEnv: 'MY_VAR'` resolves to:
 
@@ -94,18 +96,14 @@ The per-environment field names match the keys you declared on your `TypeLambda`
 
 ```ts
 import { createEnvironmentConfig } from "configee"
-import type { TypeLambda } from "configee"
 
-interface MyEnvs extends TypeLambda {
-  readonly out: {
-    dev?: this["arg"]
-    integ?: this["arg"]
-    staging: this["arg"]
-    production: this["arg"]
-  }
+type MyEnvs = {
+  required: "staging" | "production"
+  optional: "dev" | "integ"
 }
 
-const config = createEnvironmentConfig<MyEnvs>("staging", {
+// 👀 Note the extra trailing `()`            👇 -- The function is curried to help TS infer the correct types
+const config = createEnvironmentConfig<MyEnvs>()("staging", {
   apiUrl: {
     doc: "Base URL for the API",
     format: "url",
@@ -139,10 +137,12 @@ config.mongo.password // string
 
 ## `defineEnvironmentConfig`
 
-Identical to `createEnvironmentConfig` but returns a factory function instead of immediately resolving. Useful when the environment is not known at schema-definition time.
+Identical to `createEnvironmentConfig` but binds the schema first and the environment later. Useful when the environment is not known at schema-definition time.
 
 ```ts
-const buildConfig = defineEnvironmentConfig<MyEnvs>({
+import { defineEnvironmentConfig, type EnvName } from "configee"
+
+const buildConfig = defineEnvironmentConfig<MyEnvs>()({
   /* schema */
 })
 
