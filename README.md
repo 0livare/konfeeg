@@ -1,4 +1,4 @@
-# configee
+# konfeeg
 
 Validated, strongly-typed config for Node and the browser. Define a schema once; values are resolved, coerced, and validated at startup — missing or invalid values throw immediately.
 
@@ -9,7 +9,7 @@ Validated, strongly-typed config for Node and the browser. Define a schema once;
 ## Quick start
 
 ```ts
-import { createEnvironmentConfig } from "configee"
+import { createEnvironmentConfig } from "konfeeg"
 
 // 1. Declare your environments (required vs optional)
 type MyEnvs = {
@@ -145,7 +145,7 @@ A circular fallback chain (e.g. `{ dev: 'integ', integ: 'dev' }`) throws synchro
 Same as `createEnvironmentConfig`, but binds the schema first and the environment later — useful when the environment isn't known at schema-definition time.
 
 ```ts
-import { defineEnvironmentConfig } from "configee"
+import { defineEnvironmentConfig } from "konfeeg"
 
 const buildConfig = defineEnvironmentConfig<MyEnvs>()({
   /* schema */

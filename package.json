@@ -1,10 +1,10 @@
 {
-  "name": "configee",
+  "name": "konfeeg",
   "version": "0.0.0",
   "description": "Build a validated, strongly-typed config object, and use it everywhere.",
   "author": "Zach Olivare <https://github.com/0livare>",
   "license": "ISC",
-  "repository": "https://github.com/0livare/configee",
+  "repository": "https://github.com/0livare/konfeeg",
   "type": "module",
   "main": "dist/index.mjs",
   "module": "dist/index.mjs",
