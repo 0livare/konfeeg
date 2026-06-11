@@ -23,8 +23,6 @@ The resolved object always includes an `env` property set to the active environm
 You decide what your environments are called and which are required vs. optional. Environments are declared as a plain type with two unions — `required` and `optional`:
 
 ```ts
-import type { EnvsDecl } from "configee"
-
 type MyEnvs = {
   required: "staging" | "production"
   optional: "dev" | "integ"

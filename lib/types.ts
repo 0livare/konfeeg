@@ -1,15 +1,32 @@
-import type { EnvsDecl, PerEnv } from "./util-types.js"
+import type { EnvName, EnvsDecl, PerEnv } from "./util-types.js"
+
+// Every env key must be absent. Used by the "no per-env keys" arm so it
+// doesn't structurally subsume the "per-env required" arm.
+type NoEnvKeys<E extends EnvsDecl> = { [K in EnvName<E>]?: never }
+
+// processEnv and importMetaEnv are mutually exclusive; both may also be absent.
+type RuntimeSourceOptional<T> =
+  | { value?: T; processEnv?: never; importMetaEnv?: never }
+  | { value?: T; processEnv: string; importMetaEnv?: never }
+  | { value?: T; processEnv?: never; importMetaEnv: string }
+
+// At least one of value / processEnv / importMetaEnv must be present.
+type ValueSourceRequired<T> =
+  | { value: T; processEnv?: never; importMetaEnv?: never }
+  | { value?: T; processEnv: string; importMetaEnv?: never }
+  | { value?: T; processEnv?: never; importMetaEnv: string }
+
+// Per-env values are all-or-nothing for required envs. If an entry supplies
+// any env-named key (required or optional), it must supply all required
+// env-named keys. Otherwise it must declare a value source explicitly.
+type ValueSource<T, E extends EnvsDecl> =
+  | (PerEnv<E, T> & RuntimeSourceOptional<T>)
+  | (NoEnvKeys<E> & ValueSourceRequired<T>)
 
 export type ConfigEntryBase<T, E extends EnvsDecl> = {
   doc: string
   optional?: boolean
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-} & (PerEnv<E, T> | { value: T } | {}) &
-  (
-    | { processEnv: string; importMetaEnv?: never }
-    | { importMetaEnv: string; processEnv?: never }
-    | { processEnv?: never; importMetaEnv?: never }
-  )
+} & ValueSource<T, E>
 
 export type ConfigGroup<E extends EnvsDecl> = {
   [key: string]: ConfigEntry<any, E> | ConfigGroup<E>

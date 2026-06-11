@@ -196,6 +196,8 @@ describe("value source precedence", () => {
         format: String,
         value: "static-value",
         sandbox: "sandbox-specific",
+        nonprod: "nonprod-value",
+        prod: "prod-value",
       },
     })
     expect(config.key).toBe("sandbox-specific")
