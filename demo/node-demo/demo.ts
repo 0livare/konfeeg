@@ -1,3 +1,4 @@
+import "dotenv/config"
 import { createEnvironmentConfig } from "konfeeg"
 
 type MyEnvs = {
