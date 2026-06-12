@@ -67,6 +67,7 @@ export const config = createEnvironmentConfig<WhichEnvsAreRequired>()(
     missing: {
       doc: "Example of a missing optional value with no default. Resolves to `undefined`.",
       optional: true,
+      importMetaEnv: "THIS_ENV_VAR_DOES_NOT_EXIST", // Not set, so this entry has no value source at runtime
     },
   },
   {
