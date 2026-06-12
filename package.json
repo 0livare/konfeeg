@@ -11,7 +11,7 @@
     "build": "pnpm --filter konfeeg run build",
     "pub": "pnpm --filter konfeeg run pub",
     "test": "pnpm --filter konfeeg run test",
-    "pr": "nx run-many -t types,format,build"
+    "pr": "nx run-many -t types,format,build,test"
   },
   "devDependencies": {
     "nx": "^22.7.5"

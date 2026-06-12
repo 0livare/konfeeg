@@ -7,6 +7,7 @@ Validated, strongly-typed config for Node and the browser. Define a schema once;
 > - works in the browser (as well as node)
 > - supports environment-specific values without requiring use of global env vars
 > - supports `import.meta.env` (e.g. for Vite)
+> - focuses on simplicity and type inference, with a more limited feature set than convict
 
 ---
 
@@ -22,8 +23,8 @@ type MyEnvs = {
   production: unknown
 }
 
-// 2. Build the config — note the extra ()    👇 (curried for TS inference)
-const config = createEnvironmentConfig<MyEnvs>()("staging", {
+// 2. Build the config —- note the extra (), it's curried for TS inference
+const config = createEnvironmentConfig<MyEnvs>()("staging", { // ← this env name should be dynamic in a real app
   apiUrl: {
     doc: "Base URL for the API",
     format: "url", // Will error if the value isn't a valid URL
@@ -72,7 +73,7 @@ config.env // "staging"
 config.apiUrl // string (validated as URL)
 config.logLevel // "debug" | "info" | "warn" | "error"
 config.port // number
-config.allowedOrigins // any[]
+config.allowedOrigins // string[]
 config.mongo.dbName // string
 config.mongo.poolSize // number
 ```
@@ -102,7 +103,7 @@ config.mongo.poolSize // number
 | Field                             | Required | Description                                                                           |
 | --------------------------------- | -------- | ------------------------------------------------------------------------------------- |
 | `doc`                             | required | Human-readable description                                                            |
-| `format`                          | optional | Validation format — see below. If omitted, no validation is applied; the resolved type is inferred from `value`/per-env fields, or `any` if none are declared |
+| `format`                          | optional | Validation format — see [below](#formats). If omitted, no validation is applied; the resolved type is inferred from `value`/per-env fields, or `any` if none are declared |
 | `value`                           | optional | Constant shared across all environments (lowest priority)                             |
 | `processEnv`                      | optional | `process.env` key — runtime override (highest priority)                               |
 | `importMetaEnv`                   | optional | `import.meta.env` key — runtime override (highest priority)                           |
@@ -159,7 +160,7 @@ const config = createEnvironmentConfig<MyEnvs>()(
   {
     fallbacks: {
       dev: "integ", // dev → integ
-      integ: "staging", // integ → staging (chained)
+      integ: "staging", // integ → staging (chains with prev. fallback is now dev → integ → staging)
     },
   },
 )

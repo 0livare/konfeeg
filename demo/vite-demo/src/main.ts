@@ -92,11 +92,16 @@ config.rawMetadata.source
 
 // ===
 
-document.getElementById("output")!.textContent = JSON.stringify(
+const jsonString = JSON.stringify(
   config,
-  (_k, v) => (v === undefined ? "can't stringify undefined" : v),
+  (_k, v) =>
+    v === undefined
+      ? "_this value is `undefined` (but that's not valid JSON)_"
+      : v,
   2,
 )
+
+document.getElementById("output")!.textContent = jsonString
 
 // ===
 
