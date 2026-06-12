@@ -9,13 +9,13 @@ export function validateAndCoerce(
   switch (format) {
     case String:
       if (typeof value !== "string") {
-        errors.push(`Config value for ${fullKey} must be a string`)
+        errors.push(`${fullKey}: must be a string`)
       }
       break
     case Number:
       value = Number(value)
       if (isNaN(value))
-        errors.push(`Config value for ${fullKey} must be a number`)
+        errors.push(`${fullKey}: must be a number`)
       break
     case Boolean:
       if (
@@ -25,14 +25,14 @@ export function validateAndCoerce(
         value !== 1 &&
         value !== 0
       ) {
-        errors.push(`Config value for ${fullKey} must be a boolean`)
+        errors.push(`${fullKey}: must be a boolean`)
       }
       value =
         value === "true" ? true : value === "false" ? false : Boolean(value)
       break
     case Array:
       if (!Array.isArray(value)) {
-        errors.push(`Config value for ${fullKey} must be an array`)
+        errors.push(`${fullKey}: must be an array`)
       }
       break
     case "url":
@@ -40,7 +40,7 @@ export function validateAndCoerce(
         new URL(value)
       } catch {
         errors.push(
-          `Config value for ${fullKey} must be a valid URL; found "${value}"`,
+          `${fullKey}: must be a valid URL; found "${value}"`,
         )
       }
       break
@@ -48,7 +48,7 @@ export function validateAndCoerce(
       if (format instanceof Array) {
         if (!format.includes(value)) {
           errors.push(
-            `Config value for ${fullKey} must be one of: [${format.join(", ")}]`,
+            `${fullKey}: must be one of: [${format.join(", ")}]`,
           )
         }
       }
