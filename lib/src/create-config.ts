@@ -6,7 +6,11 @@ import type {
   CreateConfigOptions,
   Fallbacks,
 } from "./util-types.js"
-import type { ConfigGroup, ValidateSchema, ResolveConfigGroup } from "./types.js"
+import type {
+  ConfigGroup,
+  ValidateSchema,
+  ResolveConfigGroup,
+} from "./types.js"
 import { validateAndCoerce } from "./format.js"
 
 /**

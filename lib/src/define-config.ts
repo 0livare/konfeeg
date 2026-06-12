@@ -1,5 +1,9 @@
 import type { EnvsShape, EnvName, CreateConfigOptions } from "./util-types.js"
-import type { ConfigGroup, ValidateSchema, ResolveConfigGroup } from "./types.js"
+import type {
+  ConfigGroup,
+  ValidateSchema,
+  ResolveConfigGroup,
+} from "./types.js"
 import { createEnvironmentConfig } from "./create-config.js"
 
 /**

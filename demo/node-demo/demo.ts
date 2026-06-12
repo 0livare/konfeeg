@@ -1,4 +1,4 @@
-import { createEnvironmentConfig } from "./lib/index.js"
+import { createEnvironmentConfig } from "konfeeg"
 
 type MyEnvs = {
   dev?: unknown // optional (?) = per-env value may be omitted

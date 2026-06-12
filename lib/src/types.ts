@@ -102,9 +102,13 @@ type UntypedEntry<E extends EnvsShape> = ConfigEntryBase<any, E> & {
 // at the specific key rather than at the whole entry.
 export type ValidateSchema<G, E extends EnvsShape> = {
   [K in keyof G]: G[K] extends { format: readonly (infer V)[] }
-    ? { [P in keyof G[K]]: P extends (EnvName<E> | "value" | "default")
-        ? G[K][P] extends V | undefined ? G[K][P] : V
-        : G[K][P] }
+    ? {
+        [P in keyof G[K]]: P extends EnvName<E> | "value" | "default"
+          ? G[K][P] extends V | undefined
+            ? G[K][P]
+            : V
+          : G[K][P]
+      }
     : G[K] extends { format: unknown }
       ? G[K]
       : ValidateSchema<G[K], E>

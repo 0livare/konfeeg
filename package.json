@@ -1,53 +1,18 @@
 {
   "name": "konfeeg",
-  "version": "0.0.0",
   "description": "Build a validated, strongly-typed config object, and use it everywhere.",
   "author": "Zach Olivare <https://github.com/0livare>",
   "license": "ISC",
-  "repository": "https://github.com/0livare/konfeeg",
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "dist"
-  ],
   "scripts": {
-    "build": "tsdown",
-    "test": "vitest --run",
-    "types": "tsc",
-    "format": "prettier --write .",
-    "pr": "tsc && prettier --check . && pnpm run test && tsdown",
-    "pub": "npx bumpp"
-  },
-  "devDependencies": {
-    "prettier": "^3.8.4",
-    "tsdown": "^0.22.2",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
+    "demo": "nx run-many -t demo",
+    "types": "nx run-many -t types",
+    "format": "nx run-many -t format",
+    "build": "nx build konfeeg",
+    "pub": "nx pub konfeeg",
+    "test": "nx test konfeeg"
   },
   "packageManager": "pnpm@11.5.3+sha512.7ac1c919341c213a34dc0d02afb7143c5c26ac26ee8c4782deea821b8ac64d2134a081fd8941dae6e29bbb48f58dfc2b7fbceeccc07cb2f09d219d342a4969ed",
-  "keywords": [
-    "environment",
-    "config",
-    "configuration",
-    "typescript",
-    "type-safe",
-    "validation",
-    "browser",
-    "node"
-  ]
+  "devDependencies": {
+    "nx": "^22.7.5"
+  }
 }

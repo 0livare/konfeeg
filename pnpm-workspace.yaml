@@ -1,0 +1,8 @@
+packages:
+  - "lib"
+  - "demo/*"
+allowBuilds:
+  nx: false
+
+catalog:
+  prettier: ^3.8.4

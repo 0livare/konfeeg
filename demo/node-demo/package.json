@@ -1,0 +1,13 @@
+{
+  "name": "@demo/node",
+  "type": "module",
+  "scripts": {
+    "demo": "node demo.ts",
+    "types": "tsc",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "konfeeg": "workspace:*",
+    "prettier": "catalog:default"
+  }
+}
