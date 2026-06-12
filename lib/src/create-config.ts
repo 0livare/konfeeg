@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type {
-  EnvsShape,
-  EnvName,
-  CreateConfigOptions,
-  Fallbacks,
-} from "./util-types.js"
+import { validateAndCoerce } from "./format.js"
 import type {
   ConfigGroup,
-  ValidateSchema,
   ResolveConfigGroup,
+  ValidateSchema,
 } from "./types.js"
-import { validateAndCoerce } from "./format.js"
+import type {
+  CreateConfigOptions,
+  EnvName,
+  EnvsShape,
+  Fallbacks,
+} from "./util-types.js"
 
 /**
  * Create a resolved, validated config for the given environment.

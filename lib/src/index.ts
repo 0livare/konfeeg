@@ -1,9 +1,9 @@
 export { createEnvironmentConfig } from "./create-config.js"
 export { defineEnvironmentConfig } from "./define-config.js"
 export type {
-  EnvsShape,
-  EnvName,
-  PerEnv,
-  Fallbacks,
   CreateConfigOptions,
+  EnvName,
+  EnvsShape,
+  Fallbacks,
+  PerEnv,
 } from "./util-types.js"

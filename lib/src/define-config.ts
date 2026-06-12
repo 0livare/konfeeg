@@ -1,10 +1,10 @@
-import type { EnvsShape, EnvName, CreateConfigOptions } from "./util-types.js"
+import { createEnvironmentConfig } from "./create-config.js"
 import type {
   ConfigGroup,
-  ValidateSchema,
   ResolveConfigGroup,
+  ValidateSchema,
 } from "./types.js"
-import { createEnvironmentConfig } from "./create-config.js"
+import type { CreateConfigOptions, EnvName, EnvsShape } from "./util-types.js"
 
 /**
  * Like {@link createEnvironmentConfig}, but binds the schema first and the
@@ -38,9 +38,9 @@ import { createEnvironmentConfig } from "./create-config.js"
 export function defineEnvironmentConfig<E extends EnvsShape>() {
   const create = createEnvironmentConfig<E>()
   return <const G extends ConfigGroup<E>>(
-      inputConfig: ValidateSchema<G, E>,
-      options?: CreateConfigOptions<E>,
-    ): ((env: EnvName<E>) => ResolveConfigGroup<G> & { env: EnvName<E> }) =>
+    inputConfig: ValidateSchema<G, E>,
+    options?: CreateConfigOptions<E>,
+  ): ((env: EnvName<E>) => ResolveConfigGroup<G> & { env: EnvName<E> }) =>
     (env: EnvName<E>) =>
       create(env, inputConfig as any, options)
 }
