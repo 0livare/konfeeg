@@ -14,8 +14,7 @@ export function validateAndCoerce(
       break
     case Number:
       value = Number(value)
-      if (isNaN(value))
-        errors.push(`${fullKey}: must be a number`)
+      if (isNaN(value)) errors.push(`${fullKey}: must be a number`)
       break
     case Boolean:
       if (
@@ -39,17 +38,13 @@ export function validateAndCoerce(
       try {
         new URL(value)
       } catch {
-        errors.push(
-          `${fullKey}: must be a valid URL; found "${value}"`,
-        )
+        errors.push(`${fullKey}: must be a valid URL; found "${value}"`)
       }
       break
     default:
       if (format instanceof Array) {
         if (!format.includes(value)) {
-          errors.push(
-            `${fullKey}: must be one of: [${format.join(", ")}]`,
-          )
+          errors.push(`${fullKey}: must be one of: [${format.join(", ")}]`)
         }
       }
   }

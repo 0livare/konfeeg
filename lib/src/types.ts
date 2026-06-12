@@ -16,7 +16,13 @@ type ValueSourceRequired<T> =
   | { value: T; processEnv?: never; importMetaEnv?: never }
   | { value?: T; processEnv: string; importMetaEnv?: never }
   | { value?: T; processEnv?: never; importMetaEnv: string }
-  | { optional: true; value?: T; processEnv?: never; importMetaEnv?: never; default: T }
+  | {
+      optional: true
+      value?: T
+      processEnv?: never
+      importMetaEnv?: never
+      default: T
+    }
 
 // Per-env values are all-or-nothing for required envs. If an entry supplies
 // any env-named key (required or optional), it must supply all required
@@ -36,12 +42,11 @@ export type ConfigGroup<E extends EnvsShape> = {
 
 // Widens T to T | undefined for optional entries that declare no default
 // (those can legitimately resolve to undefined at runtime).
-type MaybeOptionalUndefined<E, T> =
-  E extends { optional: true }
-    ? E extends { default: any }
-      ? T
-      : T | undefined
-    : T
+type MaybeOptionalUndefined<E, T> = E extends { optional: true }
+  ? E extends { default: any }
+    ? T
+    : T | undefined
+  : T
 
 // Keys that are part of the entry schema contract and are NOT per-env value fields.
 type ReservedEntryKeys =
@@ -63,8 +68,26 @@ type NeverToAny<T> = [T] extends [never] ? any : T
 type UntypedResolved<E> = NeverToAny<
   | (E extends { value: infer V } ? V : never)
   | (E extends { default: infer D } ? D : never)
-  | (E extends Record<string, any> ? E[Exclude<keyof E, ReservedEntryKeys>] : never)
+  | (E extends Record<string, any>
+      ? E[Exclude<keyof E, ReservedEntryKeys>]
+      : never)
 >
+
+// Widens primitive literals to their base type. Used for Array-format entries
+// so that e.g. per-env values typed as `"https://…"` resolve to `string[]`
+// rather than a const-tuple type.
+// biome-ignore format: intending makes this nesting harder to read
+type WideElement<T> =
+  T extends string ? string :
+  T extends number ? number :
+  T extends boolean ? boolean :
+  T
+
+// For Array-format entries, infer the element type from statically-known value
+// sources and widen primitive literals. Falls back to `any` when no static
+// sources are declared (e.g. processEnv/importMetaEnv only).
+type ArrayElementType<E> =
+  UntypedResolved<E> extends readonly (infer Item)[] ? WideElement<Item> : any
 
 // biome-ignore format: intending makes this nesting harder to read
 export type ResolveEntryType<E> =
@@ -73,7 +96,7 @@ export type ResolveEntryType<E> =
   E extends {format: BooleanConstructor} ? MaybeOptionalUndefined<E, boolean> :
   E extends {format: 'url'} ? MaybeOptionalUndefined<E, string> :
   E extends {format: (infer F)[]} ? MaybeOptionalUndefined<E, F> :
-  E extends {format: ArrayConstructor} ? MaybeOptionalUndefined<E, any[]> :
+  E extends {format: ArrayConstructor} ? MaybeOptionalUndefined<E, ArrayElementType<E>[]> :
   MaybeOptionalUndefined<E, UntypedResolved<E>>
 
 export type ResolveConfigGroup<G> = {

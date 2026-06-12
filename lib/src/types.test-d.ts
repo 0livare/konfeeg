@@ -92,7 +92,7 @@ describe("ResolveEntryType", () => {
     >()
     expectTypeOf<
       ResolveEntryType<{ format: ArrayConstructor }>
-    >().toEqualTypeOf<any[]>()
+    >().toEqualTypeOf<any[]>() // no static sources — falls back to any[]
   })
 
   it("resolves to any when no format is given", () => {
@@ -126,7 +126,7 @@ describe("createEnvironmentConfig: resolved value types", () => {
     expectTypeOf(config.num).toBeNumber()
     expectTypeOf(config.bool).toBeBoolean()
     expectTypeOf(config.url).toBeString()
-    expectTypeOf(config.arr).toEqualTypeOf<any[]>()
+    expectTypeOf(config.arr).toEqualTypeOf<string[]>()
 
     // enum formats narrow to the literal union of their members,
     // not the widened base type
@@ -223,6 +223,48 @@ describe("createEnvironmentConfig: resolved value types", () => {
     expectTypeOf(config.fromEnv).toBeAny()
   })
 
+  describe("format: Array", () => {
+    it("infers element type from per-env values", () => {
+      const config = create("nonprod", {
+        urls: {
+          doc: "x",
+          format: Array,
+          nonprod: ["https://staging.example.com"],
+          prod: ["https://example.com", "https://admin.example.com"],
+        },
+      })
+      // String literals from per-env arrays are widened to string[]
+      expectTypeOf(config.urls).toEqualTypeOf<string[]>()
+      expectTypeOf(config.urls).not.toBeAny()
+    })
+
+    it("falls back to any[] when the only sources are runtime env vars", () => {
+      const config = create("nonprod", {
+        ids: { doc: "x", format: Array, processEnv: "SOME_IDS" },
+      })
+      expectTypeOf(config.ids).toEqualTypeOf<any[]>()
+    })
+
+    it("preserves const-tuple literal types for per-env array values when no format is given", () => {
+      // Without format: Array, UntypedResolved returns the union of the per-env
+      // field types as-is — const tuples with their exact string literals.
+      // This is intentionally more precise than the format: Array case, which
+      // widens element types to string[].
+      const config = create("nonprod", {
+        urls: {
+          doc: "x",
+          nonprod: ["https://staging.example.com"],
+          prod: ["https://example.com", "https://admin.example.com"],
+        },
+      })
+      expectTypeOf(config.urls).toEqualTypeOf<
+        | readonly ["https://staging.example.com"]
+        | readonly ["https://example.com", "https://admin.example.com"]
+      >()
+      expectTypeOf(config.urls).not.toBeAny()
+    })
+  })
+
   it("resolves to T (not T | undefined) when optional with a default", () => {
     const config = create("nonprod", {
       opt: { doc: "x", format: String, optional: true, default: "d" },
@@ -233,7 +275,12 @@ describe("createEnvironmentConfig: resolved value types", () => {
 
   it("resolves to T | undefined when optional without a default", () => {
     const config = create("nonprod", {
-      opt: { doc: "x", format: String, processEnv: "MAYBE_UNSET", optional: true },
+      opt: {
+        doc: "x",
+        format: String,
+        processEnv: "MAYBE_UNSET",
+        optional: true,
+      },
     })
     expectTypeOf(config.opt).toEqualTypeOf<string | undefined>()
   })

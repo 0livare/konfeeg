@@ -86,6 +86,8 @@ export const config = createEnvironmentConfig<WhichEnvsAreRequired>()(
 // ===
 
 console.info(config)
+config.allowedOrigins
+config.mongo.dbName
 config.rawMetadata.source
 
 // ===
@@ -95,7 +97,6 @@ document.getElementById("output")!.textContent = JSON.stringify(
   (_k, v) => (v === undefined ? "can't stringify undefined" : v),
   2,
 )
-
 
 // ===
 
