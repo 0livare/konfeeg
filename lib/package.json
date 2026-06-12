@@ -31,7 +31,7 @@
     "types": "tsc",
     "format": "prettier --write .",
     "pr": "tsc && prettier --check . && pnpm run test && tsdown",
-    "pub": "npx bumpp"
+    "pub": "npx bumpp && pnpm publish"
   },
   "devDependencies": {
     "prettier": "catalog:default",

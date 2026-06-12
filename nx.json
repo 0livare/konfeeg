@@ -8,7 +8,9 @@
       "dependsOn": ["^build"],
       "continuous": true
     },
-    "types": {},
+    "types": {
+      "dependsOn": ["^build"]
+    },
     "format": {}
   },
   "analytics": true
