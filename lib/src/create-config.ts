@@ -137,7 +137,8 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
       const hasValueSource =
         value !== undefined ||
         "processEnv" in configEntry ||
-        "importMetaEnv" in configEntry
+        "importMetaEnv" in configEntry ||
+        configEntry.optional
 
       if (value === undefined && !hasValueSource) {
         errors.push(
