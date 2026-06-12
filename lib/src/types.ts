@@ -33,7 +33,7 @@ export type ConfigGroup<E extends EnvsShape> = {
   [key: string]: ConfigEntry<any, E> | ConfigGroup<E>
 }
 
-// prettier-ignore
+// biome-ignore format: intending makes this nesting harder to read
 export type ResolveEntryType<E> =
   E extends {format: StringConstructor} ? string :
   E extends {format: NumberConstructor} ? number :

@@ -29,12 +29,12 @@
     "build": "tsdown",
     "test": "vitest --run",
     "types": "tsc",
-    "format": "prettier --write .",
-    "pr": "tsc && prettier --check . && pnpm run test && tsdown",
+    "format": "biome format --write",
+    "pr": "tsc && biome check && pnpm run test && tsdown",
     "pub": "npx bumpp && pnpm publish"
   },
   "devDependencies": {
-    "prettier": "catalog:default",
+    "@biomejs/biome": "catalog:default",
     "tsdown": "^0.22.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"

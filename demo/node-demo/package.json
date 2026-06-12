@@ -4,11 +4,13 @@
   "scripts": {
     "dev": "node --watch demo.ts",
     "types": "tsc",
-    "format": "prettier --write ."
+    "format": "biome format --write"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
-    "konfeeg": "workspace:*",
-    "prettier": "catalog:default"
+    "konfeeg": "workspace:*"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:default"
   }
 }

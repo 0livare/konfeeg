@@ -6,13 +6,13 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "types": "tsc",
-    "format": "prettier --write ."
+    "format": "biome format --write"
   },
   "dependencies": {
     "konfeeg": "workspace:*"
   },
   "devDependencies": {
-    "prettier": "catalog:default",
+    "@biomejs/biome": "catalog:default",
     "typescript": "~6.0.2",
     "vite": "^8.0.12"
   }
