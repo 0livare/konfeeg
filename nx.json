@@ -5,7 +5,8 @@
       "outputs": ["{projectRoot}/dist"]
     },
     "dev": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "continuous": true
     },
     "types": {},
     "format": {}

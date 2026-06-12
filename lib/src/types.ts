@@ -20,9 +20,17 @@ type ValueSourceRequired<T> =
 // Per-env values are all-or-nothing for required envs. If an entry supplies
 // any env-named key (required or optional), it must supply all required
 // env-named keys. Otherwise it must declare a value source explicitly.
+// The third arm covers optional entries with no source at all (resolve to undefined).
 type ValueSource<T, E extends EnvsShape> =
   | (PerEnv<E, T> & RuntimeSourceOptional<T>)
   | (NoEnvKeys<E> & ValueSourceRequired<T>)
+  | (NoEnvKeys<E> & {
+      value?: never
+      processEnv?: never
+      importMetaEnv?: never
+      default?: never
+      optional: true
+    })
 
 export type ConfigEntryBase<T, E extends EnvsShape> = {
   doc: string

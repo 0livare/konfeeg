@@ -64,6 +64,10 @@ export const config = createEnvironmentConfig<WhichEnvsAreRequired>()(
         default: 10,
       },
     },
+    missing: {
+      doc: "Example of a missing optional value with no default. Resolves to `undefined`.",
+      optional: true,
+    },
   },
   {
     fallbacks: {
@@ -74,4 +78,8 @@ export const config = createEnvironmentConfig<WhichEnvsAreRequired>()(
 
 console.info(config)
 
-document.getElementById("output")!.textContent = JSON.stringify(config, null, 2)
+document.getElementById("output")!.textContent = JSON.stringify(
+  config,
+  (_k, v) => (v === undefined ? "can't stringify undefined" : v),
+  2,
+)

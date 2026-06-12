@@ -142,7 +142,7 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
 
       if (value === undefined && !hasValueSource) {
         errors.push(
-          `No value source declared for ${fullKey}. Supply a value using environment names, "value", "processEnv", or "importMetaEnv".`,
+          `${fullKey}: No value source declared and "optional" is not set.`,
         )
         continue
       }
@@ -156,7 +156,7 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
           }
         } else {
           errors.push(
-            `Missing required config value for ${fullKey} in environment ${env}`,
+            `${fullKey}: Missing required config value in environment ${env}`,
           )
           continue
         }
@@ -173,7 +173,7 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
     return output
   }
 
-  const outputConfig = processConfig(inputConfig, "")
+  let outputConfig = processConfig(inputConfig, "")
 
   if (errors.length > 0) {
     console.error("Environment config validation failed", errors)
@@ -182,7 +182,10 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
     )
   }
 
-  outputConfig.env = env
+  outputConfig = {
+    env,
+    ...outputConfig,
+  }
   return outputConfig as ResolveConfigGroup<G> & { env: EnvName<E> }
 }
 
