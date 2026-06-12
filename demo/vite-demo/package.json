@@ -4,16 +4,21 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
-    "types": "tsc",
-    "format": "biome format --write"
+    "preview": "vite preview"
+  },
+  "nx": {
+    "targets": {
+      "types": {},
+      "format": {},
+      "lint": {}
+    }
   },
   "dependencies": {
     "konfeeg": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:default",
-    "typescript": "~6.0.2",
+    "typescript": "catalog:default",
     "vite": "^8.0.12"
   }
 }

@@ -9,6 +9,9 @@ catalogs:
     '@biomejs/biome':
       specifier: ^2.4.16
       version: 2.4.16
+    typescript:
+      specifier: ^6.0.3
+      version: 6.0.3
 
 importers:
 
@@ -30,6 +33,9 @@ importers:
       '@biomejs/biome':
         specifier: catalog:default
         version: 2.4.16
+      typescript:
+        specifier: catalog:default
+        version: 6.0.3
 
   demo/vite-demo:
     dependencies:
@@ -41,7 +47,7 @@ importers:
         specifier: catalog:default
         version: 2.4.16
       typescript:
-        specifier: ~6.0.2
+        specifier: catalog:default
         version: 6.0.3
       vite:
         specifier: ^8.0.12
@@ -56,7 +62,7 @@ importers:
         specifier: ^0.22.2
         version: 0.22.2(typescript@6.0.3)
       typescript:
-        specifier: ^6.0.3
+        specifier: catalog:default
         version: 6.0.3
       vitest:
         specifier: ^4.1.8

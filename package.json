@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "nx run-many -t dev",
     "types": "nx run-many -t types",
+    "lint": "nx run-many -t lint",
     "format": "nx run-many -t format",
     "build": "pnpm --filter konfeeg run build",
     "pub": "pnpm --filter konfeeg run pub",
     "test": "pnpm --filter konfeeg run test",
-    "pr": "pnpm --filter konfeeg run pr"
+    "pr": "nx run-many -t types,format,build"
   },
   "devDependencies": {
     "nx": "^22.7.5"

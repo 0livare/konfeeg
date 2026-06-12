@@ -2,15 +2,21 @@
   "name": "@demo/node",
   "type": "module",
   "scripts": {
-    "dev": "node --watch demo.ts",
-    "types": "tsc",
-    "format": "biome format --write"
+    "dev": "node --watch demo.ts"
+  },
+  "nx": {
+    "targets": {
+      "types": {},
+      "format": {},
+      "lint": {}
+    }
   },
   "dependencies": {
     "dotenv": "^17.4.2",
     "konfeeg": "workspace:*"
   },
   "devDependencies": {
-    "@biomejs/biome": "catalog:default"
+    "@biomejs/biome": "catalog:default",
+    "typescript": "catalog:default"
   }
 }

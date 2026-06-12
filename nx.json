@@ -2,6 +2,7 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "targetDefaults": {
     "build": {
+      "dependsOn": ["^build"],
       "outputs": ["{projectRoot}/dist"]
     },
     "dev": {
@@ -9,9 +10,20 @@
       "continuous": true
     },
     "types": {
+      "executor": "nx:run-commands",
+      "options": { "command": "tsc", "cwd": "{projectRoot}" },
       "dependsOn": ["^build"]
     },
-    "format": {}
+    "format": {
+      "executor": "nx:run-commands",
+      "options": { "command": "biome check --write .", "cwd": "{projectRoot}" },
+      "cache": false
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "biome check .", "cwd": "{projectRoot}" },
+      "cache": false
+    }
   },
   "analytics": true
 }
