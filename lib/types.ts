@@ -10,11 +10,12 @@ type RuntimeSourceOptional<T> =
   | { value?: T; processEnv: string; importMetaEnv?: never }
   | { value?: T; processEnv?: never; importMetaEnv: string }
 
-// At least one of value / processEnv / importMetaEnv must be present.
+// At least one of value / processEnv / importMetaEnv / default must be present.
 type ValueSourceRequired<T> =
   | { value: T; processEnv?: never; importMetaEnv?: never }
   | { value?: T; processEnv: string; importMetaEnv?: never }
   | { value?: T; processEnv?: never; importMetaEnv: string }
+  | { value?: T; processEnv?: never; importMetaEnv?: never; default: T }
 
 // Per-env values are all-or-nothing for required envs. If an entry supplies
 // any env-named key (required or optional), it must supply all required
@@ -94,4 +95,17 @@ type UrlEntry<E extends EnvsShape> = ConfigEntryBase<string, E> & {
 type UntypedEntry<E extends EnvsShape> = ConfigEntryBase<any, E> & {
   format?: never
   default?: any
+}
+
+// Walks a schema and for enum entries (format is a readonly tuple) constrains
+// per-env / value / default keys to the enum's literal union, reporting errors
+// at the specific key rather than at the whole entry.
+export type ValidateSchema<G, E extends EnvsShape> = {
+  [K in keyof G]: G[K] extends { format: readonly (infer V)[] }
+    ? { [P in keyof G[K]]: P extends (EnvName<E> | "value" | "default")
+        ? G[K][P] extends V | undefined ? G[K][P] : V
+        : G[K][P] }
+    : G[K] extends { format: unknown }
+      ? G[K]
+      : ValidateSchema<G[K], E>
 }

@@ -1,5 +1,5 @@
 import type { EnvsShape, EnvName, CreateConfigOptions } from "./util-types.js"
-import type { ConfigGroup, ResolveConfigGroup } from "./types.js"
+import type { ConfigGroup, ValidateSchema, ResolveConfigGroup } from "./types.js"
 import { createEnvironmentConfig } from "./create-config.js"
 
 /**
@@ -33,10 +33,10 @@ import { createEnvironmentConfig } from "./create-config.js"
  */
 export function defineEnvironmentConfig<E extends EnvsShape>() {
   const create = createEnvironmentConfig<E>()
-  return <G extends ConfigGroup<E>>(
-      inputConfig: G,
+  return <const G extends ConfigGroup<E>>(
+      inputConfig: ValidateSchema<G, E>,
       options?: CreateConfigOptions<E>,
     ): ((env: EnvName<E>) => ResolveConfigGroup<G> & { env: EnvName<E> }) =>
     (env: EnvName<E>) =>
-      create(env, inputConfig, options)
+      create(env, inputConfig as any, options)
 }

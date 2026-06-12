@@ -6,7 +6,7 @@ import type {
   CreateConfigOptions,
   Fallbacks,
 } from "./util-types.js"
-import type { ConfigGroup, ResolveConfigGroup } from "./types.js"
+import type { ConfigGroup, ValidateSchema, ResolveConfigGroup } from "./types.js"
 import { validateAndCoerce } from "./format.js"
 
 /**
@@ -50,12 +50,12 @@ import { validateAndCoerce } from "./format.js"
  * ```
  */
 export function createEnvironmentConfig<E extends EnvsShape>() {
-  return <G extends ConfigGroup<E>>(
+  return <const G extends ConfigGroup<E>>(
     env: EnvName<E>,
-    inputConfig: G,
+    inputConfig: ValidateSchema<G, E>,
     options?: CreateConfigOptions<E>,
   ): ResolveConfigGroup<G> & { env: EnvName<E> } =>
-    buildConfig<E, G>(env, inputConfig, options)
+    buildConfig<E, G>(env, inputConfig as unknown as G, options)
 }
 
 function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(

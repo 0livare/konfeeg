@@ -1,72 +1,65 @@
 import { createEnvironmentConfig } from "./lib/index.js"
 
 type MyEnvs = {
-  dev?: unknown
-  integ?: unknown
-  staging: unknown
+  dev?: unknown // optional (?) = per-env value may be omitted
+  staging: unknown // required = must supply a value
   production: unknown
 }
 
 type MyEnvNames = Prettify<keyof MyEnvs> //  "dev" | "integ" | "staging" | "production"
 
-const config = createEnvironmentConfig<MyEnvs>()(
-  "dev",
-  {
-    aws: {
-      region: {
-        doc: "AWS region",
-        format: String,
-        value: "us-east-1",
-      },
-      cognito: {
-        userPoolId: {
-          doc: "Cognito User Pool ID",
-          format: String,
-          staging: "us-east-1_stagingPool",
-          production: "us-east-1_prodPool",
-        },
-      },
+const config = createEnvironmentConfig<MyEnvs>()("staging", {
+  apiUrl: {
+    doc: "Base URL for the API",
+    format: "url", // Will error if the value isn't a valid URL
+    processEnv: "API_URL", // runtime override (highest priority)
+    dev: "http://localhost:3000",
+    staging: "https://staging-api.example.com",
+    production: "https://api.example.com",
+  },
+  logLevel: {
+    doc: "Minimum log level",
+    format: ["debug", "info", "warn", "error"] as const, // Must be one of these literals
+    processEnv: "LOG_LEVEL",
+    dev: "debug",
+    staging: "info",
+    production: "warn",
+  },
+  port: {
+    doc: "HTTP port to listen on",
+    format: Number, // Numeric strings (e.g. from env vars) are coerced
+    processEnv: "PORT",
+    value: 3000,
+  },
+  allowedOrigins: {
+    doc: "CORS allow-list",
+    format: Array, // Value must be an array
+    staging: ["https://staging.example.com"],
+    production: ["https://example.com", "https://admin.example.com"],
+  },
+  mongo: {
+    dbName: {
+      doc: "Mongo database name",
+      format: String, // Will error if the value isn't a string
+      processEnv: "MONGO_DB_NAME",
+      value: "my-app-db", // static fallback (lowest priority)
     },
-    mongo: {
-      connectionString: {
-        doc: "MongoDB connection string",
-        format: "url",
-        dev: "mongodb://localhost:27017/myapp",
-        staging: "mongodb://localhost:27017/myapp",
-        production: "mongodb://db.prod:27017/myapp",
-      },
-    },
-    port: {
-      doc: "Port to run the server on",
+    poolSize: {
+      doc: "Max connections in the Mongo pool",
       format: Number,
-      value: 3000,
-    },
-    foo: {
-      doc: "Example of a value that only exists in some environments",
-      processEnv: "FOO", // Can also pull from env vars
-      staging: "stagingFoo",
-      production: "productionFoo",
-    },
-    bar: {
-      doc: "Example of a value that only exists in some environments",
-      importMetaEnv: "VITE_BAR", // Can also pull from env vars that override
-      dev: "defaultBar", // Static default value, overridden by env vars and per-env fields
-      staging: "stagingBar",
-      production: "productionBar",
+      optional: true, // missing value resolves to `default` instead of throwing
+      default: 10,
     },
   },
-  {
-    fallbacks: {
-      dev: "integ", // when dev is not specified, fall back to integ
-      integ: "staging", // when integ is not specified, fall back to staging
-    },
-  },
-)
+})
 
-console.log(config.aws.region)
-console.log(config.aws.cognito.userPoolId)
-console.log(config.mongo.connectionString)
-console.log(config.port)
+console.log(config.env) // "staging"
+console.log(config.apiUrl) // string (validated as URL)
+console.log(config.logLevel) // "debug" | "info" | "warn" | "error"
+console.log(config.port) // number
+console.log(config.allowedOrigins) // any[]
+console.log(config.mongo.dbName) // string
+console.log(config.mongo.poolSize) // number
 
 //
 
