@@ -6,7 +6,7 @@ type WhichEnvsAreRequired = {
   prod: unknown
 }
 
-type AppEnvironment = keyof WhichEnvsAreRequired
+type AppEnvironment = Prettify<keyof WhichEnvsAreRequired> // "local" | "nonprod" | "prod"
 
 const appEnv = import.meta.env.VITE_APP_ENV as AppEnvironment
 
@@ -69,6 +69,12 @@ export const config = createEnvironmentConfig<WhichEnvsAreRequired>()(
       optional: true,
       importMetaEnv: "THIS_ENV_VAR_DOES_NOT_EXIST", // Not set, so this entry has no value source at runtime
     },
+    rawMetadata: {
+      doc: "Arbitrary metadata — no format means no runtime validation; resolved type is inferred from `value`",
+      // No `format` field: the value is passed through as-is. TypeScript infers
+      // the type from `value` (or per-env fields) instead of falling back to `any`.
+      value: { source: "vite-demo", version: 1 },
+    },
   },
   {
     fallbacks: {
@@ -77,10 +83,20 @@ export const config = createEnvironmentConfig<WhichEnvsAreRequired>()(
   },
 )
 
+// ===
+
 console.info(config)
+config.rawMetadata.source
+
+// ===
 
 document.getElementById("output")!.textContent = JSON.stringify(
   config,
   (_k, v) => (v === undefined ? "can't stringify undefined" : v),
   2,
 )
+
+
+// ===
+
+type Prettify<T> = { [K in keyof T]: T[K] } & {}

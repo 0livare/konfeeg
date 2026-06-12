@@ -196,22 +196,46 @@ describe("createEnvironmentConfig: resolved value types", () => {
     >()
   })
 
-  it("documents current behavior: entries without a format resolve to any", () => {
+  it("resolves to the value field's type when no format is given", () => {
     const config = create("nonprod", {
       raw: { doc: "x", value: { anything: 1 } },
     })
-    expectTypeOf(config.raw).toBeAny()
+    expectTypeOf(config.raw).toEqualTypeOf<{ readonly anything: 1 }>()
+    expectTypeOf(config.raw).not.toBeAny()
+    // Property access on the inferred object type must work without error
+    expectTypeOf(config.raw.anything).toEqualTypeOf<1>()
   })
 
-  it("documents current behavior: optional entries do NOT include undefined", () => {
-    // At runtime an optional entry without a resolvable value yields
-    // undefined, but the resolved type is still the bare format type.
-    // If ResolveEntryType is ever taught about `optional`, update this.
+  it("resolves to a union of per-env value types when no format is given", () => {
+    const config = create("nonprod", {
+      level: { doc: "x", nonprod: "info" as const, prod: "warn" as const },
+    })
+    expectTypeOf(config.level).toEqualTypeOf<"info" | "warn">()
+    expectTypeOf(config.level).not.toBeAny()
+  })
+
+  it("resolves to any when no format and no static value sources exist", () => {
+    // processEnv/importMetaEnv values are only known at runtime, so the type
+    // cannot be inferred and falls back to `any`.
+    const config = create("nonprod", {
+      fromEnv: { doc: "x", processEnv: "SOME_VAR" },
+    })
+    expectTypeOf(config.fromEnv).toBeAny()
+  })
+
+  it("resolves to T (not T | undefined) when optional with a default", () => {
     const config = create("nonprod", {
       opt: { doc: "x", format: String, optional: true, default: "d" },
     })
     expectTypeOf(config.opt).toBeString()
     expectTypeOf(config.opt).not.toBeUndefined()
+  })
+
+  it("resolves to T | undefined when optional without a default", () => {
+    const config = create("nonprod", {
+      opt: { doc: "x", format: String, processEnv: "MAYBE_UNSET", optional: true },
+    })
+    expectTypeOf(config.opt).toEqualTypeOf<string | undefined>()
   })
 
   it("narrows enum formats written with `as const` identically", () => {
@@ -241,11 +265,11 @@ describe("createEnvironmentConfig: schema validation", () => {
     })
   })
 
-  it("documents current behavior: optional alone does not satisfy the value-source requirement", () => {
-    // Runtime would accept this (resolving to undefined), but the types
-    // demand an explicit source even for optional entries.
+  it("rejects optional: true with no value source at all", () => {
+    // optional: true is not itself a value source; a source (processEnv,
+    // importMetaEnv, value, or default+optional) must still be declared.
     create("nonprod", {
-      // @ts-expect-error optional: true is not a value source at the type level
+      // @ts-expect-error optional: true alone does not satisfy the value-source requirement
       maybe: { doc: "x", format: String, optional: true },
     })
   })

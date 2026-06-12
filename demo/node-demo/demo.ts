@@ -7,7 +7,7 @@ type MyEnvs = {
   production: unknown
 }
 
-type MyEnvNames = Prettify<keyof MyEnvs> //  "dev" | "integ" | "staging" | "production"
+type MyEnvNames = Prettify<keyof MyEnvs> //  "dev" | "staging" | "production"
 
 const config = createEnvironmentConfig<MyEnvs>()("staging", {
   apiUrl: {
@@ -52,6 +52,14 @@ const config = createEnvironmentConfig<MyEnvs>()("staging", {
       default: 10,
     },
   },
+  rawMetadata: {
+    doc: "Arbitrary metadata — no format means no runtime validation; resolved type is inferred from `value`",
+    // No `format` field: the value is passed through as-is. TypeScript infers
+    // the type from `value` (or per-env fields) instead of falling back to `any`.
+    dev: { source: "dev", version: 1 },
+    staging: { source: "staging", version: 2 },
+    production: { source: "production", version: 3 },
+  },
 })
 
 console.info(config)
@@ -63,7 +71,8 @@ console.info("config.port: ", config.port) // number
 console.info("config.allowedOrigins: ", config.allowedOrigins) // any[]
 console.info("config.mongo.dbName: ", config.mongo.dbName) // string
 console.info("config.mongo.poolSize: ", config.mongo.poolSize) // number
+console.info("config.rawMetadata: ", config.rawMetadata.version) // { readonly source: "demo"; readonly version: 1 }
 
-//
+// ===
 
 type Prettify<T> = { [K in keyof T]: T[K] } & {}

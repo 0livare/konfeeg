@@ -10,12 +10,13 @@ type RuntimeSourceOptional<T> =
   | { value?: T; processEnv: string; importMetaEnv?: never }
   | { value?: T; processEnv?: never; importMetaEnv: string }
 
-// At least one of value / processEnv / importMetaEnv / default must be present.
+// At least one of value / processEnv / importMetaEnv must be present,
+// OR default may be the sole source when optional: true is also set.
 type ValueSourceRequired<T> =
   | { value: T; processEnv?: never; importMetaEnv?: never }
   | { value?: T; processEnv: string; importMetaEnv?: never }
   | { value?: T; processEnv?: never; importMetaEnv: string }
-  | { value?: T; processEnv?: never; importMetaEnv?: never; default: T }
+  | { optional: true; value?: T; processEnv?: never; importMetaEnv?: never; default: T }
 
 // Per-env values are all-or-nothing for required envs. If an entry supplies
 // any env-named key (required or optional), it must supply all required
@@ -33,15 +34,47 @@ export type ConfigGroup<E extends EnvsShape> = {
   [key: string]: ConfigEntry<any, E> | ConfigGroup<E>
 }
 
+// Widens T to T | undefined for optional entries that declare no default
+// (those can legitimately resolve to undefined at runtime).
+type MaybeOptionalUndefined<E, T> =
+  E extends { optional: true }
+    ? E extends { default: any }
+      ? T
+      : T | undefined
+    : T
+
+// Keys that are part of the entry schema contract and are NOT per-env value fields.
+type ReservedEntryKeys =
+  | "doc"
+  | "format"
+  | "optional"
+  | "default"
+  | "value"
+  | "processEnv"
+  | "importMetaEnv"
+
+// Prevent `never` from propagating — use `any` as the fallback.
+type NeverToAny<T> = [T] extends [never] ? any : T
+
+// For entries without a format, infer the resolved type from statically-known
+// value sources: the `value` field, the `default` field, and any per-environment
+// fields. Falls back to `any` when none are present (e.g. processEnv/importMetaEnv
+// only, since their values aren't known until runtime).
+type UntypedResolved<E> = NeverToAny<
+  | (E extends { value: infer V } ? V : never)
+  | (E extends { default: infer D } ? D : never)
+  | (E extends Record<string, any> ? E[Exclude<keyof E, ReservedEntryKeys>] : never)
+>
+
 // biome-ignore format: intending makes this nesting harder to read
 export type ResolveEntryType<E> =
-  E extends {format: StringConstructor} ? string :
-  E extends {format: NumberConstructor} ? number :
-  E extends {format: BooleanConstructor} ? boolean :
-  E extends {format: 'url'} ? string :
-  E extends {format: (infer F)[]} ? F :
-  E extends {format: ArrayConstructor} ? any[] :
-  any
+  E extends {format: StringConstructor} ? MaybeOptionalUndefined<E, string> :
+  E extends {format: NumberConstructor} ? MaybeOptionalUndefined<E, number> :
+  E extends {format: BooleanConstructor} ? MaybeOptionalUndefined<E, boolean> :
+  E extends {format: 'url'} ? MaybeOptionalUndefined<E, string> :
+  E extends {format: (infer F)[]} ? MaybeOptionalUndefined<E, F> :
+  E extends {format: ArrayConstructor} ? MaybeOptionalUndefined<E, any[]> :
+  MaybeOptionalUndefined<E, UntypedResolved<E>>
 
 export type ResolveConfigGroup<G> = {
   [K in keyof G]: G[K] extends { doc: string }
@@ -111,5 +144,7 @@ export type ValidateSchema<G, E extends EnvsShape> = {
       }
     : G[K] extends { format: unknown }
       ? G[K]
-      : ValidateSchema<G[K], E>
+      : G[K] extends { doc: string }
+        ? G[K] // unformatted entry (no format field) — pass through as-is
+        : ValidateSchema<G[K], E>
 }

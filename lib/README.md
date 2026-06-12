@@ -102,7 +102,7 @@ config.mongo.poolSize // number
 | Field                             | Required | Description                                                                           |
 | --------------------------------- | -------- | ------------------------------------------------------------------------------------- |
 | `doc`                             | required | Human-readable description                                                            |
-| `format`                          | required | Validation format — see below                                                         |
+| `format`                          | optional | Validation format — see below. If omitted, no validation is applied; the resolved type is inferred from `value`/per-env fields, or `any` if none are declared |
 | `value`                           | optional | Constant shared across all environments (lowest priority)                             |
 | `processEnv`                      | optional | `process.env` key — runtime override (highest priority)                               |
 | `importMetaEnv`                   | optional | `import.meta.env` key — runtime override (highest priority)                           |
