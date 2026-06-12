@@ -6,8 +6,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "types": "tsc",
-    "format": "prettier --write .",
-    "demo": "pnpm run build && pnpm run preview"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "konfeeg": "workspace:*"

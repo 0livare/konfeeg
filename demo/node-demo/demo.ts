@@ -53,13 +53,15 @@ const config = createEnvironmentConfig<MyEnvs>()("staging", {
   },
 })
 
-console.log(config.env) // "staging"
-console.log(config.apiUrl) // string (validated as URL)
-console.log(config.logLevel) // "debug" | "info" | "warn" | "error"
-console.log(config.port) // number
-console.log(config.allowedOrigins) // any[]
-console.log(config.mongo.dbName) // string
-console.log(config.mongo.poolSize) // number
+console.info(config)
+console.info("\n\n")
+console.info("config.env: ", config.env) // "staging"
+console.info("config.apiUrl: ", config.apiUrl) // string (validated as URL)
+console.info("config.logLevel: ", config.logLevel) // "debug" | "info" | "warn" | "error"
+console.info("config.port: ", config.port) // number
+console.info("config.allowedOrigins: ", config.allowedOrigins) // any[]
+console.info("config.mongo.dbName: ", config.mongo.dbName) // string
+console.info("config.mongo.poolSize: ", config.mongo.poolSize) // number
 
 //
 

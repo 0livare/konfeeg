@@ -2,7 +2,7 @@
   "name": "@demo/node",
   "type": "module",
   "scripts": {
-    "demo": "node demo.ts",
+    "dev": "node --watch demo.ts",
     "types": "tsc",
     "format": "prettier --write ."
   },

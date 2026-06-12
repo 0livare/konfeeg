@@ -1,60 +1,77 @@
 import { createEnvironmentConfig } from "konfeeg"
 
-type MyEnvs = {
-  dev?: unknown // optional (?) = per-env value may be omitted
-  staging: unknown // required = must supply a value
-  production: unknown
+type WhichEnvsAreRequired = {
+  local?: unknown // optional (?) = per-env value may be omitted
+  nonprod: unknown // required = must supply a value
+  prod: unknown
 }
 
-const config = createEnvironmentConfig<MyEnvs>()("staging", {
-  apiUrl: {
-    doc: "Base URL for the API",
-    format: "url", // Will error if the value isn't a valid URL
-    processEnv: "API_URL", // runtime override (highest priority)
-    dev: "http://localhost:3000",
-    staging: "https://staging-api.example.com",
-    production: "https://api.example.com",
-  },
-  logLevel: {
-    doc: "Minimum log level",
-    format: ["debug", "info", "warn", "error"] as const, // Must be one of these literals
-    processEnv: "LOG_LEVEL",
-    dev: "debug",
-    staging: "info",
-    production: "warn",
-  },
-  port: {
-    doc: "HTTP port to listen on",
-    format: Number, // Numeric strings (e.g. from env vars) are coerced
-    processEnv: "PORT",
-    value: 3000,
-  },
-  allowedOrigins: {
-    doc: "CORS allow-list",
-    format: Array, // Value must be an array
-    staging: ["https://staging.example.com"],
-    production: ["https://example.com", "https://admin.example.com"],
-  },
-  mongo: {
-    dbName: {
-      doc: "Mongo database name",
-      format: String, // Will error if the value isn't a string
-      processEnv: "MONGO_DB_NAME",
-      value: "my-app-db", // static fallback (lowest priority)
-    },
-    poolSize: {
-      doc: "Max connections in the Mongo pool",
-      format: Number,
-      optional: true, // missing value resolves to `default` instead of throwing
-      default: 10,
-    },
-  },
-})
+type AppEnvironment = keyof WhichEnvsAreRequired
 
-console.log(config.env) // "staging"
-console.log(config.apiUrl) // string (validated as URL)
-console.log(config.logLevel) // "debug" | "info" | "warn" | "error"
-console.log(config.port) // number
-console.log(config.allowedOrigins) // any[]
-console.log(config.mongo.dbName) // string
-console.log(config.mongo.poolSize) // number
+const appEnv = import.meta.env.VITE_APP_ENV as AppEnvironment
+
+console.info("Active environment: ", appEnv)
+console.info("import.meta.env: ", import.meta.env) // Vite's env vars are available at runtime
+
+export const config = createEnvironmentConfig<WhichEnvsAreRequired>()(
+  appEnv,
+  {
+    viteFoo: {
+      doc: "Example of import.meta.env override",
+      format: String,
+      importMetaEnv: "VITE_FOO",
+      value: "default vitefoo (should _NOT_ be seen because VITE_FOO is set)",
+    },
+    apiUrl: {
+      doc: "Base URL for the API",
+      format: "url", // Will error if the value isn't a valid URL
+      processEnv: "API_URL", // runtime override (highest priority)
+      local: "http://localhost:3000",
+      nonprod: "https://staging-api.example.com",
+      prod: "https://api.example.com",
+    },
+    logLevel: {
+      doc: "Minimum log level",
+      format: ["debug", "info", "warn", "error"] as const, // Must be one of these literals
+      processEnv: "LOG_LEVEL",
+      local: "debug",
+      nonprod: "info",
+      prod: "warn",
+    },
+    port: {
+      doc: "HTTP port to listen on",
+      format: Number, // Numeric strings (e.g. from env vars) are coerced
+      processEnv: "PORT",
+      value: 3000,
+    },
+    allowedOrigins: {
+      doc: "CORS allow-list",
+      format: Array, // Value must be an array
+      nonprod: ["https://staging.example.com"],
+      prod: ["https://example.com", "https://admin.example.com"],
+    },
+    mongo: {
+      dbName: {
+        doc: "Mongo database name",
+        format: String, // Will error if the value isn't a string
+        processEnv: "MONGO_DB_NAME",
+        value: "my-app-db", // static fallback (lowest priority)
+      },
+      poolSize: {
+        doc: "Max connections in the Mongo pool",
+        format: Number,
+        optional: true, // missing value resolves to `default` instead of throwing
+        default: 10,
+      },
+    },
+  },
+  {
+    fallbacks: {
+      local: "nonprod", // When running in `local`, any entry that does not declare a `local` value falls back to the entry's `nonprod` value.
+    },
+  },
+)
+
+console.info(config)
+
+document.getElementById("output")!.textContent = JSON.stringify(config, null, 2)
