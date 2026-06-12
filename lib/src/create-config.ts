@@ -130,7 +130,11 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
         if (runtimeOverride !== undefined) value = runtimeOverride
       } else if ("importMetaEnv" in configEntry) {
         const runtimeOverride =
-          importMetaEnv?.[configEntry.importMetaEnv as string]
+          // @ts-expect-error import.meta.env may not be defined in Node builds
+          typeof import.meta !== "undefined" && import.meta.env
+            ? // @ts-expect-error import.meta.env may not be defined in Node builds
+              import.meta.env[configEntry.importMetaEnv as string]
+            : undefined
         if (runtimeOverride !== undefined) value = runtimeOverride
       }
 
@@ -217,14 +221,3 @@ function resolveFallbackChain<E extends EnvsShape>(
   }
   return chain
 }
-
-// Resolved indirectly so bundlers targeting CJS don't statically rewrite
-// `import.meta` to `{}` — in CJS the Function body is a SyntaxError, which
-// we swallow and treat as "no import.meta.env available".
-const importMetaEnv: Record<string, string | undefined> | undefined = (() => {
-  try {
-    return new Function("return import.meta.env")()
-  } catch {
-    return undefined
-  }
-})()
