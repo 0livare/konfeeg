@@ -32,6 +32,26 @@ const config = createEnvironmentConfig<MyEnvs>()("staging", {
     staging: "https://staging-api.example.com",
     production: "https://api.example.com",
   },
+  logLevel: {
+    doc: "Minimum log level",
+    format: ["debug", "info", "warn", "error"] as const, // Must be one of these literals
+    processEnv: "LOG_LEVEL",
+    dev: "debug",
+    staging: "info",
+    production: "warn",
+  },
+  port: {
+    doc: "HTTP port to listen on",
+    format: Number, // Numeric strings (e.g. from env vars) are coerced
+    processEnv: "PORT",
+    value: 3000,
+  },
+  allowedOrigins: {
+    doc: "CORS allow-list",
+    format: Array, // Value must be an array
+    staging: ["https://staging.example.com"],
+    production: ["https://example.com", "https://admin.example.com"],
+  },
   mongo: {
     dbName: {
       doc: "Mongo database name",
@@ -39,18 +59,22 @@ const config = createEnvironmentConfig<MyEnvs>()("staging", {
       processEnv: "MONGO_DB_NAME",
       value: "my-app-db", // static fallback (lowest priority)
     },
-    password: {
-      doc: "Mongo database password",
-      format: String,
-      // runtime-only, no static fallback
-      importMetaEnv: "MONGO_PASSWORD", // uses import.meta.env instead of process.env (e.g. for Vite)
+    poolSize: {
+      doc: "Max connections in the Mongo pool",
+      format: Number,
+      optional: true, // missing value resolves to `default` instead of throwing
+      default: 10,
     },
   },
 })
 
 config.env // "staging"
 config.apiUrl // string (validated as URL)
+config.logLevel // "debug" | "info" | "warn" | "error"
+config.port // number
+config.allowedOrigins // any[]
 config.mongo.dbName // string
+config.mongo.poolSize // number
 ```
 
 > [!important]
