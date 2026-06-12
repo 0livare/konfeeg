@@ -430,6 +430,92 @@ describe("optional and defaults", () => {
     })
     expect(config.key).toBe("fallback")
   })
+
+  // Regression: 56c1193 — optional entries that had per-env values but no
+  // match for the active env were still throwing "No value source declared"
+  // because `configEntry.optional` was not counted as a hasValueSource.
+  it("resolves to undefined when optional and active env has no per-env value", () => {
+    const config = testCreateConfig("local", {
+      key: {
+        doc: "test",
+        format: String,
+        optional: true,
+        nonprod: "nonprod-value",
+        prod: "prod-value",
+      },
+    })
+    expect(config.key).toBeUndefined()
+  })
+
+  it("uses the default when optional, active env has no per-env value, and a default is provided", () => {
+    const config = testCreateConfig("local", {
+      key: {
+        doc: "test",
+        format: String,
+        optional: true,
+        default: "the-default",
+        nonprod: "nonprod-value",
+        prod: "prod-value",
+      },
+    })
+    expect(config.key).toBe("the-default")
+  })
+
+  it("uses the per-env value when optional and the active env has one", () => {
+    const config = testCreateConfig("nonprod", {
+      key: {
+        doc: "test",
+        format: String,
+        optional: true,
+        nonprod: "nonprod-value",
+        prod: "prod-value",
+      },
+    })
+    expect(config.key).toBe("nonprod-value")
+  })
+
+  // Regression: 2ed55f9 — optional + default as the only value source (no env
+  // keys, no processEnv/importMetaEnv, no value field) was erroneously
+  // triggering "No value source declared" at runtime. The fourth
+  // ValueSourceRequired arm (`{ default: T }`) and the 56c1193 hasValueSource
+  // fix together make this case work end-to-end.
+  it("uses the default when optional: true and default is the only value source", () => {
+    const config = testCreateConfig("nonprod", {
+      key: {
+        doc: "test",
+        format: String,
+        optional: true,
+        default: "only-default",
+      },
+    })
+    expect(config.key).toBe("only-default")
+  })
+
+  // Regression: 62640de — env was previously assigned via mutation
+  // (`outputConfig.env = env`). The fix uses `{ env, ...outputConfig }` so
+  // the env property is always present on the returned object.
+  it("env property is present on the returned config object", () => {
+    const config = testCreateConfig("nonprod", {
+      key: { ...baseEntry("v"), format: String },
+    })
+    expect(config.env).toBe("nonprod")
+  })
+
+  it("env property reflects the active env, not a fallback env", () => {
+    const config = testCreateConfig(
+      "local",
+      {
+        key: {
+          doc: "test",
+          format: String,
+          nonprod: "nonprod-value",
+          prod: "prod-value",
+        },
+      },
+      { fallbacks: { local: "nonprod" } },
+    )
+    expect(config.env).toBe("local")
+  })
 })
 
 describe("environment fallbacks", () => {
