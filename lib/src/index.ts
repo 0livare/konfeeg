@@ -7,4 +7,4 @@ export type {
   Fallbacks,
   PerEnv,
 } from "./util-types.js"
-export type {ConfigGroup} from './types.js'
+export type {ConfigGroup, ResolveConfigGroup} from './types.js'
