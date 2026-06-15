@@ -28,7 +28,7 @@
     "dev": "tsdown --watch",
     "build": "tsdown",
     "test": "vitest --run",
-    "pub": "npx bumpp && pnpm publish"
+    "pub": "pnpm run build && npx bumpp && pnpm publish"
   },
   "nx": {
     "targets": {
