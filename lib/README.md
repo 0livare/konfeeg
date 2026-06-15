@@ -5,9 +5,9 @@ Validated, strongly-typed config for Node and the browser. Define a schema once;
 > API is inspired by [convict](https://github.com/mozilla/node-convict/tree/master/packages/convict), but this package:
 >
 > - works in the browser (as well as node)
-> - supports environment-specific values without requiring use of global env vars
+> - designed for multi-environment apps (e.g. dev, staging, production) with first-class support for per-env values and fallbacks
 > - supports `import.meta.env` (e.g. for Vite)
-> - focuses on simplicity and type inference, with a more limited feature set than convict
+> - focuses on simplicity and type inference, with a more targeted feature set than convict
 
 ---
 
