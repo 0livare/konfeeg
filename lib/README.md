@@ -1,13 +1,21 @@
 # konfeeg
 
-Validated, strongly-typed config for Node and the browser. Define a schema once; values are resolved, coerced, and validated at startup — missing or invalid values throw immediately.
+Validated, strongly-typed, multi-environment config for Node and the browser. Define a schema once; values are resolved, coerced, and validated at startup — missing or invalid values throw immediately.
 
-> API is inspired by [convict](https://github.com/mozilla/node-convict/tree/master/packages/convict), but this package:
->
-> - works in the browser (as well as node)
-> - designed for multi-environment apps (e.g. dev, staging, production) with first-class support for per-env values and fallbacks
-> - supports `import.meta.env` (e.g. for Vite)
-> - focuses on simplicity and type inference, with a more targeted feature set than convict
+## Features
+
+| Feature                       | konfeeg | [convict] | [node-config] |
+| ----------------------------- | ------- | --------- | ------------- |
+| Browser support               | ✅      | ❌        | ❌            |
+| First-class multi-env support | ✅      | ❌        | ❌            |
+| Runtime env var overrides     | ✅      | ✅        | ✅            |
+| Strongly typed                | ✅      | ✅        | ❌            |
+| Supports `import.meta.env`    | ✅      | ❌        | ❌            |
+| Runtime validation            | ✅      | ✅        | ❌            |
+| Custom validations            | ❌      | ✅        | ❌            |
+
+[convict]: https://github.com/mozilla/node-convict/tree/master/packages/convict
+[node-config]: https://github.com/node-config/node-config
 
 ---
 
@@ -100,16 +108,16 @@ config.mongo.poolSize // number
 
 ## Schema fields
 
-| Field                             | Required | Description                                                                           |
-| --------------------------------- | -------- | ------------------------------------------------------------------------------------- |
-| `doc`                             | required | Human-readable description                                                            |
+| Field                             | Required | Description                                                                                                                                                               |
+| --------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `doc`                             | required | Human-readable description                                                                                                                                                |
 | `format`                          | optional | Validation format — see [below](#formats). If omitted, no validation is applied; the resolved type is inferred from `value`/per-env fields, or `any` if none are declared |
-| `value`                           | optional | Constant shared across all environments (lowest priority)                             |
-| `processEnv`                      | optional | `process.env` key — runtime override (highest priority)                               |
-| `importMetaEnv`                   | optional | `import.meta.env` key — runtime override (highest priority)                           |
-| `optional`                        | optional | When `true`, missing value will not throw. Resolves to `default` field or `undefined` |
-| `default`                         | optional | Fallback to replace `undefined` when `optional: true` and no value is found           |
-| env keys (e.g. `dev`, `staging`…) | optional | Per-environment value overrides. _(These are the env names that you pass in in)_      |
+| `value`                           | optional | Constant shared across all environments (lowest priority)                                                                                                                 |
+| `processEnv`                      | optional | `process.env` key — runtime override (highest priority)                                                                                                                   |
+| `importMetaEnv`                   | optional | `import.meta.env` key — runtime override (highest priority)                                                                                                               |
+| `optional`                        | optional | When `true`, missing value will not throw. Resolves to `default` field or `undefined`                                                                                     |
+| `default`                         | optional | Fallback to replace `undefined` when `optional: true` and no value is found                                                                                               |
+| env keys (e.g. `dev`, `staging`…) | optional | Per-environment value overrides. _(These are the env names that you pass in in)_                                                                                          |
 
 ---
 
