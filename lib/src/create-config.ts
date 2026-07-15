@@ -171,6 +171,11 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
       //
       value = validateAndCoerce(value, configEntry.format, fullKey, errors)
 
+      // Clone array values so the resolved config owns its arrays rather than
+      // aliasing the input schema — otherwise mutating a resolved array would
+      // leak into the schema and into sibling configs built from it.
+      if (Array.isArray(value)) value = [...value]
+
       output[key] = value
     }
 

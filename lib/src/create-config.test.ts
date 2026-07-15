@@ -306,6 +306,21 @@ describe("format validation", () => {
     ).toThrow()
   })
 
+  // Regression: resolved arrays must not alias the input schema. Otherwise
+  // mutating a resolved array would leak into the schema and into sibling
+  // configs built from the same definition.
+  it("clones array values so the resolved config does not alias the schema", () => {
+    const build = defineEnvironmentConfig<TestEnvs>()({
+      origins: { doc: "test", format: Array, value: ["https://a.example.com"] },
+    })
+    const nonprod = build("nonprod")
+    const prod = build("prod")
+
+    expect(nonprod.origins).not.toBe(prod.origins)
+    ;(nonprod.origins as string[]).push("https://mutated.example.com")
+    expect(prod.origins).toEqual(["https://a.example.com"])
+  })
+
   it("accepts a valid URL", () => {
     const config = testCreateConfig("nonprod", {
       key: { ...baseEntry("https://example.com"), format: "url" },
