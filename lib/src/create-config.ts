@@ -53,6 +53,16 @@ import type {
  * )
  * ```
  */
+const RESERVED_ENTRY_KEYS = new Set([
+  "doc",
+  "format",
+  "value",
+  "optional",
+  "default",
+  "processEnv",
+  "importMetaEnv",
+])
+
 export function createEnvironmentConfig<E extends EnvsShape>() {
   return <const G extends ConfigGroup<E>>(
     env: EnvName<E>,
@@ -138,11 +148,16 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
         if (runtimeOverride !== undefined) value = runtimeOverride
       }
 
+      const hasEnvDeclaration = Object.keys(configEntry).some(
+        (candidateKey) => !RESERVED_ENTRY_KEYS.has(candidateKey),
+      )
+
       const hasValueSource =
-        value !== undefined ||
+        "value" in configEntry ||
         "processEnv" in configEntry ||
         "importMetaEnv" in configEntry ||
-        configEntry.optional
+        configEntry.optional ||
+        hasEnvDeclaration
 
       if (value === undefined && !hasValueSource) {
         errors.push(

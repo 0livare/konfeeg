@@ -773,7 +773,7 @@ describe("environment fallbacks", () => {
         },
         { fallbacks: { local: "sandbox" } },
       ),
-    ).toThrow(/no value source declared/i)
+    ).toThrow(/missing required config value in environment local/i)
   })
 
   it("throws missing-required when processEnv is declared but no env in the chain resolves", () => {
@@ -793,6 +793,14 @@ describe("environment fallbacks", () => {
         { fallbacks: { local: "sandbox" } },
       ),
     ).toThrow(/missing required config value/i)
+  })
+
+  it("throws no-value-source-declared when the entry declares no source at all", () => {
+    expect(() =>
+      testCreateConfig("nonprod", {
+        key: { doc: "test", format: String } as any,
+      }),
+    ).toThrow(/no value source declared/i)
   })
 
   it("treats an empty fallbacks map as a no-op", () => {
