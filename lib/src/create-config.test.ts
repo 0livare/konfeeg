@@ -888,7 +888,7 @@ describe("variant groups", () => {
           processEnv: "TEST_VG_DATABASE_URL",
         },
       },
-      "awsDataApi": {
+      awsDataApi: {
         resourceArn: {
           doc: "Resource ARN",
           format: String,
@@ -1119,6 +1119,48 @@ describe("variant groups", () => {
     expect(() => testCreateConfig("nonprod", config as any)).toThrow(
       /exactly one discriminant/i,
     )
+    clearDbEnv()
+  })
+
+  it("throws a schema error when `variants` is not an object", () => {
+    clearDbEnv()
+    const config = {
+      db: {
+        driver: { doc: "DB driver", format: ["pg"] as const, value: "pg" },
+        variants: null,
+      },
+    }
+    expect(() => testCreateConfig("nonprod", config as any)).toThrow(
+      /"variants" must be an object/i,
+    )
+    clearDbEnv()
+  })
+
+  it("keeps the discriminant value even if a variant field reuses its key", () => {
+    clearDbEnv()
+    process.env.TEST_VG_DATABASE_URL = "postgres://localhost/app"
+    const config = testCreateConfig("nonprod", {
+      db: {
+        driver: {
+          doc: "DB driver",
+          format: ["pg", "aws-data-api"] as const,
+          value: "pg",
+        },
+        variants: {
+          pg: {
+            connectionString: {
+              doc: "PG connection string",
+              format: String,
+              processEnv: "TEST_VG_DATABASE_URL",
+            },
+            // A variant field mistakenly reusing the discriminant's key must
+            // not overwrite the resolved discriminant value.
+            driver: { doc: "collision", format: String, value: "shadow" },
+          },
+        },
+      },
+    })
+    expect(config.db.driver).toBe("pg")
     clearDbEnv()
   })
 })

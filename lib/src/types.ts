@@ -128,10 +128,12 @@ type DiscriminantOutputKey<Node> = Exclude<keyof Node, "variants"> & string
 // discriminant's key name) plus the resolved fields of that variant's sub-group.
 export type ResolveVariantGroup<Node> = Node extends { variants: infer V }
   ? {
-      [VK in keyof V]: Simplify<
+      // `& string`: runtime variant keys come from `Object.keys` (always
+      // strings), so exclude any number/symbol keys to match runtime behavior.
+      [VK in keyof V & string]: Simplify<
         { [P in DiscriminantOutputKey<Node>]: VK } & ResolveConfigGroup<V[VK]>
       >
-    }[keyof V]
+    }[keyof V & string]
   : never
 
 export type ResolveConfigGroup<G> = {

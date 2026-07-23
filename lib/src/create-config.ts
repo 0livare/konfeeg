@@ -214,7 +214,18 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
     node: Record<string, any>,
     keyPrefix: string,
   ): Record<string, any> {
-    const variants = node.variants as Record<string, ConfigGroup<E>>
+    const rawVariants = node.variants
+    if (
+      rawVariants === null ||
+      typeof rawVariants !== "object" ||
+      Array.isArray(rawVariants)
+    ) {
+      errors.push(
+        `${keyPrefix}: "variants" must be an object mapping discriminant values to config groups`,
+      )
+      return {}
+    }
+    const variants = rawVariants as Record<string, ConfigGroup<E>>
     const discriminantKeys = Object.keys(node).filter((k) => k !== "variants")
 
     const discriminantKey = discriminantKeys[0]
@@ -263,8 +274,11 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
 
     // Resolve only the selected variant's fields under the same key prefix, so
     // their output/error keys are flat under this group (e.g. db.connectionString).
+    // The discriminant is spread last so it always wins: a variant field that
+    // (mistakenly) reuses the discriminant's key can't overwrite the selected
+    // value, keeping the resolved value consistent with the chosen variant.
     const resolvedVariant = processConfig(selected, keyPrefix)
-    return { [discriminantKey]: discriminantValue, ...resolvedVariant }
+    return { ...resolvedVariant, [discriminantKey]: discriminantValue }
   }
 
   let outputConfig = processConfig(inputConfig, "")
