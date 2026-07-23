@@ -40,6 +40,23 @@ export type ConfigGroup<E extends EnvsShape> = {
   [key: string]: ConfigEntry<any, E> | ConfigGroup<E>
 }
 
+// A discriminated-union node: a `variants` map plus exactly one sibling enum
+// entry (the discriminant). The discriminant's KEY name becomes the output
+// property carrying the selected variant's literal, and only that variant's
+// sub-group is resolved/required at runtime. Because both members are a normal
+// entry and a normal group, a variant node is already a valid `ConfigGroup`;
+// it is distinguished structurally (a `variants` key, no `doc`) rather than by
+// widening the `ConfigGroup` union — the latter degrades `const` inference of
+// readonly tuples elsewhere.
+export type VariantGroup<
+  E extends EnvsShape,
+  DiscriminantKey extends string,
+> = {
+  variants: { [variantKey: string]: ConfigGroup<E> }
+} & {
+  [K in DiscriminantKey]: EnumEntry<any, E>
+}
+
 // Widens T to T | undefined for optional entries that declare no default
 // (those can legitimately resolve to undefined at runtime).
 type MaybeOptionalUndefined<E, T> = E extends { optional: true }
@@ -99,10 +116,30 @@ export type ResolveEntryType<E> =
   E extends {format: ArrayConstructor} ? MaybeOptionalUndefined<E, ArrayElementType<E>[]> :
   MaybeOptionalUndefined<E, UntypedResolved<E>>
 
+// Collapses an intersection into a single flat object type for clean output.
+type Simplify<T> = { [K in keyof T]: T[K] }
+
+// The discriminant is the sole sibling of `variants`; its key name is the
+// output property carrying the resolved discriminant value.
+type DiscriminantOutputKey<Node> = Exclude<keyof Node, "variants"> & string
+
+// Turns a variant group into a discriminated union: one member per variant,
+// each carrying the variant's key as the discriminant literal (under the
+// discriminant's key name) plus the resolved fields of that variant's sub-group.
+export type ResolveVariantGroup<Node> = Node extends { variants: infer V }
+  ? {
+      [VK in keyof V]: Simplify<
+        { [P in DiscriminantOutputKey<Node>]: VK } & ResolveConfigGroup<V[VK]>
+      >
+    }[keyof V]
+  : never
+
 export type ResolveConfigGroup<G> = {
   [K in keyof G]: G[K] extends { doc: string }
     ? ResolveEntryType<G[K]>
-    : ResolveConfigGroup<G[K]>
+    : G[K] extends { variants: unknown }
+      ? ResolveVariantGroup<G[K]>
+      : ResolveConfigGroup<G[K]>
 }
 
 //
@@ -155,7 +192,9 @@ type UntypedEntry<E extends EnvsShape> = ConfigEntryBase<any, E> & {
 
 // Walks a schema and for enum entries (format is a readonly tuple) constrains
 // per-env / value / default keys to the enum's literal union, reporting errors
-// at the specific key rather than at the whole entry.
+// at the specific key rather than at the whole entry. Nested groups and variant
+// groups (a `variants` map plus a discriminant enum entry) are recursed as-is —
+// the discriminant is validated as an ordinary enum entry by this same walk.
 export type ValidateSchema<G, E extends EnvsShape> = {
   [K in keyof G]: G[K] extends { format: readonly (infer V)[] }
     ? {

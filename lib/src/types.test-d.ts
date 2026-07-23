@@ -474,3 +474,139 @@ describe("defineEnvironmentConfig", () => {
     )
   })
 })
+
+describe("variant groups", () => {
+  it("resolves to a discriminated union keyed by the discriminant's key name", () => {
+    const config = create("nonprod", {
+      db: {
+        driver: {
+          doc: "DB driver",
+          format: ["pg", "awsDataApi"] as const,
+          value: "pg",
+        },
+        variants: {
+          pg: {
+            connectionString: { doc: "x", format: String, value: "s" },
+          },
+          "awsDataApi": {
+            resourceArn: { doc: "x", format: String, value: "s" },
+            secretArn: { doc: "x", format: String, value: "s" },
+            database: { doc: "x", format: String, value: "s" },
+          },
+        },
+      },
+    })
+
+    // Mutual assignability == type equality. (`toEqualTypeOf`'s stricter
+    // internal identity check is tripped by the lazily-evaluated Simplify /
+    // ResolveConfigGroup wrappers, so assert both directions instead.)
+    type Expected =
+      | { driver: "pg"; connectionString: string }
+      | {
+          driver: "awsDataApi"
+          resourceArn: string
+          secretArn: string
+          database: string
+        }
+    expectTypeOf(config.db).toExtend<Expected>()
+    expectTypeOf<Expected>().toExtend<typeof config.db>()
+    expectTypeOf(config.db).not.toBeAny()
+  })
+
+  it("narrows the variant fields once the discriminant is checked", () => {
+    const config = create("nonprod", {
+      db: {
+        driver: {
+          doc: "DB driver",
+          format: ["pg", "awsDataApi"] as const,
+          value: "pg",
+        },
+        variants: {
+          pg: { connectionString: { doc: "x", format: String, value: "s" } },
+          "awsDataApi": {
+            resourceArn: { doc: "x", format: String, value: "s" },
+          },
+        },
+      },
+    })
+
+    if (config.db.driver === "pg") {
+      expectTypeOf(config.db.connectionString).toBeString()
+      // @ts-expect-error resourceArn only exists on the awsDataApi variant
+      config.db.resourceArn
+    } else {
+      expectTypeOf(config.db.resourceArn).toBeString()
+      // @ts-expect-error connectionString only exists on the pg variant
+      config.db.connectionString
+    }
+  })
+
+  it("resolves the field types inside each variant", () => {
+    const config = create("nonprod", {
+      db: {
+        kind: {
+          doc: "kind",
+          format: ["mem", "disk"] as const,
+          value: "mem",
+        },
+        variants: {
+          mem: { sizeMb: { doc: "x", format: Number, value: 64 } },
+          disk: { path: { doc: "x", format: "url", value: "https://x.dev" } },
+        },
+      },
+    })
+    if (config.db.kind === "mem") {
+      expectTypeOf(config.db.sizeMb).toBeNumber()
+    }
+    if (config.db.kind === "disk") {
+      expectTypeOf(config.db.path).toBeString()
+    }
+  })
+
+  it("constrains the discriminant to its enum members", () => {
+    create("nonprod", {
+      db: {
+        driver: {
+          doc: "DB driver",
+          format: ["pg", "awsDataApi"] as const,
+          // @ts-expect-error 'mysql' is not a member of the discriminant enum
+          value: "mysql",
+        },
+        variants: {
+          pg: { connectionString: { doc: "x", format: String, value: "s" } },
+          "awsDataApi": {
+            resourceArn: { doc: "x", format: String, value: "s" },
+          },
+        },
+      },
+    })
+  })
+
+  it("coexists with regular entries and nested groups", () => {
+    const config = create("nonprod", {
+      port: { doc: "x", format: Number, value: 3000 },
+      services: {
+        api: { doc: "x", format: "url", value: "https://example.com" },
+      },
+      db: {
+        driver: {
+          doc: "DB driver",
+          format: ["pg", "awsDataApi"] as const,
+          value: "pg",
+        },
+        variants: {
+          pg: { connectionString: { doc: "x", format: String, value: "s" } },
+          "awsDataApi": {
+            resourceArn: { doc: "x", format: String, value: "s" },
+          },
+        },
+      },
+    })
+    expectTypeOf(config.port).toBeNumber()
+    expectTypeOf(config.services.api).toBeString()
+    expectTypeOf(config).not.toBeAny()
+    if (config.db.driver === "pg") {
+      expectTypeOf(config.db.connectionString).toBeString()
+    }
+  })
+})

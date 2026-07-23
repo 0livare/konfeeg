@@ -99,7 +99,16 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
       const fullKey = keyPrefix ? `${keyPrefix}.${key}` : key
 
       if (!("doc" in entry)) {
-        output[key] = processConfig(entry as ConfigGroup<E>, fullKey)
+        // A variant group is a discriminated-union node: a `variants` map plus
+        // one sibling enum entry (the discriminant). Its value selects which
+        // sub-group is resolved. Detected structurally by a `variants` key and
+        // checked before the plain-group branch, since a variant node also
+        // lacks `doc`.
+        if ("variants" in entry) {
+          output[key] = processVariantGroup(entry as any, fullKey)
+        } else {
+          output[key] = processConfig(entry as ConfigGroup<E>, fullKey)
+        }
         continue
       }
 
@@ -195,6 +204,67 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
     }
 
     return output
+  }
+
+  // Resolve a variant group: resolve the discriminant enum entry, then resolve
+  // ONLY the sub-group selected by its value. Sibling variants are never read,
+  // so only the active variant's sources are required. The discriminant is the
+  // sole sibling of `variants`; its key name is the output property name.
+  function processVariantGroup(
+    node: Record<string, any>,
+    keyPrefix: string,
+  ): Record<string, any> {
+    const variants = node.variants as Record<string, ConfigGroup<E>>
+    const discriminantKeys = Object.keys(node).filter((k) => k !== "variants")
+
+    const discriminantKey = discriminantKeys[0]
+    if (discriminantKeys.length !== 1 || discriminantKey === undefined) {
+      errors.push(
+        `${keyPrefix}: a variant group must have exactly one discriminant entry alongside "variants"; found [${discriminantKeys.join(", ")}]`,
+      )
+      return {}
+    }
+
+    if (discriminantKey === "env") {
+      throw new Error(
+        `Config key "env" is reserved and cannot be used as a variant discriminant.`,
+      )
+    }
+    const discriminantFullKey = keyPrefix
+      ? `${keyPrefix}.${discriminantKey}`
+      : discriminantKey
+
+    // Resolve the discriminant by treating it as a one-key group, reusing the
+    // full source-precedence / fallback / enum-validation / missing-required
+    // pipeline. If it errors, don't pile on further variant errors.
+    const errorsBefore = errors.length
+    const resolved = processConfig(
+      { [discriminantKey]: node[discriminantKey] } as ConfigGroup<E>,
+      keyPrefix,
+    )
+    if (errors.length > errorsBefore) return {}
+
+    const discriminantValue = resolved[discriminantKey]
+    if (discriminantValue === undefined) {
+      errors.push(
+        `${discriminantFullKey}: discriminant did not resolve to a value; cannot select a variant`,
+      )
+      return {}
+    }
+
+    const selected = variants[discriminantValue]
+    if (!selected) {
+      errors.push(
+        `${discriminantFullKey}: resolved to "${discriminantValue}", which has no matching variant. ` +
+          `Valid variants: [${Object.keys(variants).join(", ")}]`,
+      )
+      return {}
+    }
+
+    // Resolve only the selected variant's fields under the same key prefix, so
+    // their output/error keys are flat under this group (e.g. db.connectionString).
+    const resolvedVariant = processConfig(selected, keyPrefix)
+    return { [discriminantKey]: discriminantValue, ...resolvedVariant }
   }
 
   let outputConfig = processConfig(inputConfig, "")

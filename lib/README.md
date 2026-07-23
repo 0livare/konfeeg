@@ -12,6 +12,7 @@ Validated, strongly-typed, multi-environment config for Node and the browser. De
 | Strongly typed                | ✅      | ✅        | ❌            |
 | Supports `import.meta.env`    | ✅      | ❌        | ❌            |
 | Runtime validation            | ✅      | ✅        | ❌            |
+| Conditional / variant config  | ✅      | ❌        | ❌            |
 | Custom validations            | ❌      | ✅        | ❌            |
 
 [convict]: https://github.com/mozilla/node-convict/tree/master/packages/convict
@@ -180,6 +181,81 @@ A circular fallback chain (e.g. `{ dev: 'integ', integ: 'dev' }`) throws synchro
 
 ---
 
+## Variant groups (conditional config)
+
+Sometimes which fields are required depends on the value of another field. A
+**variant group** models this as a discriminated union: an enum entry (the
+_discriminant_) selects which sub-group of fields is resolved. Only the selected
+variant's fields are resolved and required — the others are never read.
+
+A variant group is any node with a `variants` map plus exactly one sibling entry
+(the discriminant). The discriminant's **key name** becomes the output property.
+
+```ts
+const config = createEnvironmentConfig<MyEnvs>()("production", {
+  db: {
+    // The discriminant. Its key ("driver") is the output property name.
+    driver: {
+      doc: "Database driver",
+      format: ["pg", "awsDataApi"] as const,
+      processEnv: "DB_DRIVER",
+      value: "pg", // default driver (a runtime DB_DRIVER wins)
+    },
+    variants: {
+      pg: {
+        connectionString: {
+          doc: "PG URL",
+          format: String,
+          processEnv: "DATABASE_URL",
+        },
+      },
+      awsDataApi: {
+        resourceArn: {
+          doc: "Resource ARN",
+          format: String,
+          processEnv: "DB_RESOURCE_ARN",
+        },
+        secretArn: {
+          doc: "Secret ARN",
+          format: String,
+          processEnv: "DB_SECRET_ARN",
+        },
+        database: { doc: "DB name", format: String, processEnv: "DB_NAME" },
+      },
+    },
+  },
+})
+
+// `config.db` is a discriminated union — narrow it with the discriminant:
+if (config.db.driver === "pg") {
+  config.db.connectionString // string
+} else {
+  config.db.resourceArn // string
+}
+```
+
+Resolves to:
+
+```ts
+| { driver: "pg"; connectionString: string }
+| { driver: "awsDataApi"; resourceArn: string; secretArn: string; database: string }
+```
+
+- The discriminant is a normal enum entry, so it supports the full value
+  resolution order (`value`, per-env fields, `processEnv`/`importMetaEnv`) and
+  [fallbacks](#fallbacks).
+- Selecting one variant does **not** require the other variants' sources.
+- If the discriminant resolves to a value with no matching variant, resolution
+  throws and lists the valid variant keys.
+- Variant groups nest anywhere a regular entry or group can — inside a group, or
+  inside another variant.
+
+> [!note]
+> `variants` is a reserved key: a group containing a `variants` child plus a
+> single sibling entry is always treated as a variant group.
+
+---
+
 ## `defineEnvironmentConfig`
 
 Same as `createEnvironmentConfig`, but binds the schema first and the environment later — useful when the environment isn't known at schema-definition time.
@@ -187,9 +263,7 @@ Same as `createEnvironmentConfig`, but binds the schema first and the environmen
 ```ts
 import { defineEnvironmentConfig } from "konfeeg"
 
-const buildConfig = defineEnvironmentConfig<MyEnvs>()({
-  /* schema */
-})
+const buildConfig = defineEnvironmentConfig<MyEnvs>()({/* schema */})
 
 const config = buildConfig(process.env.APP_ENV as any)
 ```
