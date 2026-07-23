@@ -189,7 +189,7 @@ _discriminant_) selects which sub-group of fields is resolved. Only the selected
 variant's fields are resolved and required — the others are never read.
 
 A variant group is any node with a `variants` map plus exactly one sibling entry
-(the discriminant). The discriminant's **key name** becomes the output property.
+(the discriminant).
 
 ```ts
 const config = createEnvironmentConfig<MyEnvs>()("production", {
