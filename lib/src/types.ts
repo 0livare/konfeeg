@@ -192,6 +192,15 @@ type UntypedEntry<E extends EnvsShape> = ConfigEntryBase<any, E> & {
   default?: any
 }
 
+// The "expected" type reported for an enum-constrained key holding a value
+// outside the format's members. Deliberately an OBJECT (non-unit) type: the
+// schema is checked against `G & ValidateSchema<G, E>`, and if the corrected
+// property type were the enum's literal union, a conflicting literal would be
+// a discriminant-property clash that reduces the whole intersected entry to
+// `never` — smearing the error across every sibling key instead of pinning it
+// to the offending one.
+type InvalidEnumMember<V> = { "Expected one of the enum format members": V }
+
 // Walks a schema and for enum entries (format is a readonly tuple) constrains
 // per-env / value / default keys to the enum's literal union, reporting errors
 // at the specific key rather than at the whole entry. Nested groups and variant
@@ -203,7 +212,7 @@ export type ValidateSchema<G, E extends EnvsShape> = {
         [P in keyof G[K]]: P extends EnvName<E> | "value" | "default"
           ? G[K][P] extends V | undefined
             ? G[K][P]
-            : V
+            : InvalidEnumMember<V>
           : G[K][P]
       }
     : G[K] extends { format: unknown }

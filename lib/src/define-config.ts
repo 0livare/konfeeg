@@ -37,8 +37,9 @@ import type { CreateConfigOptions, EnvName, EnvsShape } from "./util-types.js"
  */
 export function defineEnvironmentConfig<E extends EnvsShape>() {
   const create = createEnvironmentConfig<E>()
+  // See createEnvironmentConfig for why the parameter is `G & ValidateSchema`.
   return <const G extends ConfigGroup<E>>(
-    inputConfig: ValidateSchema<G, E>,
+    inputConfig: G & ValidateSchema<G, E>,
     options?: CreateConfigOptions<E>,
   ): ((env: EnvName<E>) => ResolveConfigGroup<G> & { env: EnvName<E> }) =>
     (env: EnvName<E>) =>

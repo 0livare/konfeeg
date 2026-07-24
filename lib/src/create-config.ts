@@ -64,12 +64,18 @@ const RESERVED_ENTRY_KEYS = new Set([
 ])
 
 export function createEnvironmentConfig<E extends EnvsShape>() {
+  // `G & ValidateSchema<G, E>` (rather than `ValidateSchema<G, E>` alone):
+  // G must be inferred from the plain `G` member. Inferring it THROUGH the
+  // mapped ValidateSchema type produces a reverse-mapped type on TS < 6 whose
+  // properties fail the conditional branches in ResolveConfigGroup, collapsing
+  // every resolved entry. The intersection keys enum-value errors to the
+  // offending property just like the reverse-mapped form did.
   return <const G extends ConfigGroup<E>>(
     env: EnvName<E>,
-    inputConfig: ValidateSchema<G, E>,
+    inputConfig: G & ValidateSchema<G, E>,
     options?: CreateConfigOptions<E>,
   ): ResolveConfigGroup<G> & { env: EnvName<E> } =>
-    buildConfig<E, G>(env, inputConfig as unknown as G, options)
+    buildConfig<E, G>(env, inputConfig as G, options)
 }
 
 function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(

@@ -257,7 +257,10 @@ describe("createEnvironmentConfig: resolved value types", () => {
           prod: ["https://example.com", "https://admin.example.com"],
         },
       })
-      expectTypeOf(config.urls).toEqualTypeOf<
+      // toExtend (not toEqualTypeOf): the tuples' readonly-ness varies by
+      // compiler version — TS 6 const-infers them readonly, TS 5.9 falls back
+      // to mutable — and this test only guards literal preservation.
+      expectTypeOf(config.urls).toExtend<
         | readonly ["https://staging.example.com"]
         | readonly ["https://example.com", "https://admin.example.com"]
       >()
