@@ -23,17 +23,18 @@ Validated, strongly-typed, multi-environment config for Node and the browser. De
 ## Quick start
 
 ```ts
-import { createEnvironmentConfig } from "konfeeg"
+import { createEnvironmentConfig } from "konfeeg";
 
 // 1. Declare the names of your environments
 type MyEnvs = {
-  dev?: unknown // optional (?) = per-env value may be omitted
-  staging: unknown // required = must supply a value
-  production: unknown
-}
+  dev?: unknown; // optional (?) = per-env value may be omitted
+  staging: unknown; // required = must supply a value
+  production: unknown;
+};
 
 // 2. Build the config —- note the extra (), it's curried for TS inference
-const config = createEnvironmentConfig<MyEnvs>()("staging", { // ← this env name should be dynamic in a real app
+const config = createEnvironmentConfig<MyEnvs>()("staging", {
+  // ← this env name should be dynamic in a real app
   apiUrl: {
     doc: "Base URL for the API",
     format: "url", // Will error if the value isn't a valid URL
@@ -76,15 +77,15 @@ const config = createEnvironmentConfig<MyEnvs>()("staging", { // ← this env na
       default: 10,
     },
   },
-})
+});
 
-config.env // "staging"
-config.apiUrl // string (validated as URL)
-config.logLevel // "debug" | "info" | "warn" | "error"
-config.port // number
-config.allowedOrigins // string[]
-config.mongo.dbName // string
-config.mongo.poolSize // number
+config.env; // "staging"
+config.apiUrl; // string (validated as URL)
+config.logLevel; // "debug" | "info" | "warn" | "error"
+config.port; // number
+config.allowedOrigins; // string[]
+config.mongo.dbName; // string
+config.mongo.poolSize; // number
 ```
 
 > [!important]
@@ -172,9 +173,9 @@ const config = createEnvironmentConfig<MyEnvs>()(
       integ: "staging", // integ → staging (chains with prev. fallback is now dev → integ → staging)
     },
   },
-)
+);
 
-config.apiUrl // "https://integ.example.com"
+config.apiUrl; // "https://integ.example.com"
 ```
 
 A circular fallback chain (e.g. `{ dev: 'integ', integ: 'dev' }`) throws synchronously with the cycle path in the error message.
@@ -224,13 +225,13 @@ const config = createEnvironmentConfig<MyEnvs>()("production", {
       },
     },
   },
-})
+});
 
 // `config.db` is a discriminated union — narrow it with the discriminant:
 if (config.db.driver === "pg") {
-  config.db.connectionString // string
+  config.db.connectionString; // string
 } else {
-  config.db.resourceArn // string
+  config.db.resourceArn; // string
 }
 ```
 
@@ -261,9 +262,68 @@ Resolves to:
 Same as `createEnvironmentConfig`, but binds the schema first and the environment later — useful when the environment isn't known at schema-definition time.
 
 ```ts
-import { defineEnvironmentConfig } from "konfeeg"
+import { defineEnvironmentConfig } from "konfeeg";
 
-const buildConfig = defineEnvironmentConfig<MyEnvs>()({/* schema */})
+const buildConfig = defineEnvironmentConfig<MyEnvs>()({/* schema */});
 
-const config = buildConfig(process.env.APP_ENV as any)
+const config = buildConfig(process.env.APP_ENV as any);
 ```
+
+---
+
+## Building your own wrapper
+
+Every type needed to write a wrapper is exported, so you can bake your org's environment names and env-resolution logic into a single function and have every consumer call that instead of `createEnvironmentConfig` directly.
+
+```ts
+import {
+  createEnvironmentConfig,
+  type ConfigGroup,
+  type ResolveConfigGroup,
+  type ValidateSchema,
+} from "konfeeg";
+
+type MyCompanyAppEnvs = {
+  local?: unknown;
+  staging: unknown;
+  production: unknown;
+};
+
+export type MyCompanyAppEnvironment = keyof MyCompanyAppEnvs; // "local" | "staging" | "production"
+
+function resolveMyCompanyAppEnvironment(): MyCompanyAppEnvironment {
+  const env = process.env.APP_ENV;
+  if (!env) throw new Error("APP_ENV is required");
+  return env as MyCompanyAppEnvironment;
+}
+
+export function createMyCompanyAppConfig<const G extends ConfigGroup<MyCompanyAppEnvs>>(
+  schema: G & ValidateSchema<G, MyCompanyAppEnvs>,
+): ResolveConfigGroup<G> & { env: MyCompanyAppEnvironment } {
+  // The cast is required — see note below.
+  return createEnvironmentConfig<MyCompanyAppEnvs>(
+    resolveMyCompanyAppEnvironment(),
+    schema as never,
+  );
+}
+```
+
+Consumers now declare only a schema; the env names and the active environment come from the wrapper:
+
+```ts
+import { createMyCompanyAppConfig } from "./app-config.js";
+
+export const config = createMyCompanyAppConfig({
+  logLevel: {
+    doc: "Minimum log level",
+    format: ["debug", "info", "warn"] as const,
+    staging: "info",
+    production: "warn",
+  },
+});
+
+config.env; // "local" | "staging" | "production"
+config.logLevel; // "debug" | "info" | "warn"
+```
+
+Inference is fully preserved through the wrapper: literal types, enum unions, [variant groups](#variant-groups-conditional-config), and schema errors all behave exactly as they do on a direct call, and a bad enum value is still reported on the offending key rather than smeared across its siblings.
