@@ -189,20 +189,22 @@ Sometimes which fields are required depends on the value of another field. A
 _discriminant_) selects which sub-group of fields is resolved. Only the selected
 variant's fields are resolved and required — the others are never read.
 
-A variant group is any node with a `variants` map plus exactly one sibling entry
-(the discriminant).
+A variant group is any node with a `variants` map. Inside the map, the
+discriminant is its only entry — everything else is a group holding one
+variant's fields. Any siblings of `variants` are [shared fields](#shared-fields),
+resolved for every variant.
 
 ```ts
 const config = createEnvironmentConfig<MyEnvs>()("production", {
   db: {
-    // The discriminant. Its key ("driver") is the output property name.
-    driver: {
-      doc: "Database driver",
-      format: ["pg", "awsDataApi"] as const,
-      processEnv: "DB_DRIVER",
-      value: "pg", // default driver (a runtime DB_DRIVER wins)
-    },
     variants: {
+      // The discriminant. Its key ("driver") is the output property name.
+      driver: {
+        doc: "Database driver",
+        format: ["pg", "awsDataApi"] as const,
+        processEnv: "DB_DRIVER",
+        value: "pg", // default driver (a runtime DB_DRIVER wins)
+      },
       pg: {
         connectionString: {
           doc: "PG URL",
@@ -244,16 +246,63 @@ Resolves to:
 
 - The discriminant is a normal enum entry, so it supports the full value
   resolution order (`value`, per-env fields, `processEnv`/`importMetaEnv`) and
-  [fallbacks](#fallbacks).
+  [fallbacks](#fallbacks). It's distinguished from the variant groups around it
+  by being an entry (it has a `doc`).
 - Selecting one variant does **not** require the other variants' sources.
 - If the discriminant resolves to a value with no matching variant, resolution
   throws and lists the valid variant keys.
 - Variant groups nest anywhere a regular entry or group can — inside a group, or
   inside another variant.
 
+### Shared fields
+
+Siblings of `variants` are fields that every variant needs. They resolve flat,
+alongside the selected variant's fields:
+
+```ts
+const config = createEnvironmentConfig<MyEnvs>()("production", {
+  db: {
+    // Shared — resolved no matter which variant is selected.
+    poolSize: { doc: "Max pool size", format: Number, value: 10 },
+    variants: {
+      driver: {
+        doc: "Database driver",
+        format: ["pg", "awsDataApi"] as const,
+        processEnv: "DB_DRIVER",
+        value: "pg",
+      },
+      pg: {
+        connectionString: {
+          doc: "PG URL",
+          format: String,
+          processEnv: "DATABASE_URL",
+        },
+      },
+      awsDataApi: {
+        resourceArn: {
+          doc: "Resource ARN",
+          format: String,
+          processEnv: "DB_RESOURCE_ARN",
+        },
+      },
+    },
+  },
+});
+```
+
+Resolves to:
+
+```ts
+| { driver: "pg"; connectionString: string; poolSize: number }
+| { driver: "awsDataApi"; resourceArn: string; poolSize: number }
+```
+
+A shared field whose key collides with the discriminant key or with a field of
+the selected variant is ambiguous and throws.
+
 > [!note]
-> `variants` is a reserved key: a group containing a `variants` child plus a
-> single sibling entry is always treated as a variant group.
+> `variants` is a reserved key: a group containing a `variants` child is always
+> treated as a variant group.
 
 ---
 

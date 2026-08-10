@@ -482,16 +482,16 @@ describe("variant groups", () => {
   it("resolves to a discriminated union keyed by the discriminant's key name", () => {
     const config = create("nonprod", {
       db: {
-        driver: {
-          doc: "DB driver",
-          format: ["pg", "awsDataApi"] as const,
-          value: "pg",
-        },
         variants: {
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            value: "pg",
+          },
           pg: {
             connectionString: { doc: "x", format: String, value: "s" },
           },
-          "awsDataApi": {
+          awsDataApi: {
             resourceArn: { doc: "x", format: String, value: "s" },
             secretArn: { doc: "x", format: String, value: "s" },
             database: { doc: "x", format: String, value: "s" },
@@ -519,14 +519,14 @@ describe("variant groups", () => {
   it("narrows the variant fields once the discriminant is checked", () => {
     const config = create("nonprod", {
       db: {
-        driver: {
-          doc: "DB driver",
-          format: ["pg", "awsDataApi"] as const,
-          value: "pg",
-        },
         variants: {
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            value: "pg",
+          },
           pg: { connectionString: { doc: "x", format: String, value: "s" } },
-          "awsDataApi": {
+          awsDataApi: {
             resourceArn: { doc: "x", format: String, value: "s" },
           },
         },
@@ -547,12 +547,12 @@ describe("variant groups", () => {
   it("resolves the field types inside each variant", () => {
     const config = create("nonprod", {
       db: {
-        kind: {
-          doc: "kind",
-          format: ["mem", "disk"] as const,
-          value: "mem",
-        },
         variants: {
+          kind: {
+            doc: "kind",
+            format: ["mem", "disk"] as const,
+            value: "mem",
+          },
           mem: { sizeMb: { doc: "x", format: Number, value: 64 } },
           disk: { path: { doc: "x", format: "url", value: "https://x.dev" } },
         },
@@ -569,15 +569,15 @@ describe("variant groups", () => {
   it("constrains the discriminant to its enum members", () => {
     create("nonprod", {
       db: {
-        driver: {
-          doc: "DB driver",
-          format: ["pg", "awsDataApi"] as const,
-          // @ts-expect-error 'mysql' is not a member of the discriminant enum
-          value: "mysql",
-        },
         variants: {
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            // @ts-expect-error 'mysql' is not a member of the discriminant enum
+            value: "mysql",
+          },
           pg: { connectionString: { doc: "x", format: String, value: "s" } },
-          "awsDataApi": {
+          awsDataApi: {
             resourceArn: { doc: "x", format: String, value: "s" },
           },
         },
@@ -592,14 +592,14 @@ describe("variant groups", () => {
         api: { doc: "x", format: "url", value: "https://example.com" },
       },
       db: {
-        driver: {
-          doc: "DB driver",
-          format: ["pg", "awsDataApi"] as const,
-          value: "pg",
-        },
         variants: {
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            value: "pg",
+          },
           pg: { connectionString: { doc: "x", format: String, value: "s" } },
-          "awsDataApi": {
+          awsDataApi: {
             resourceArn: { doc: "x", format: String, value: "s" },
           },
         },
@@ -610,6 +610,68 @@ describe("variant groups", () => {
     expectTypeOf(config).not.toBeAny()
     if (config.db.driver === "pg") {
       expectTypeOf(config.db.connectionString).toBeString()
+    }
+  })
+})
+
+describe("variant groups: shared fields", () => {
+  it("intersects shared sibling fields into every union member", () => {
+    const config = create("nonprod", {
+      db: {
+        poolSize: { doc: "x", format: Number, value: 10 },
+        variants: {
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            value: "pg",
+          },
+          pg: {
+            connectionString: { doc: "x", format: String, value: "s" },
+          },
+          awsDataApi: {
+            resourceArn: { doc: "x", format: String, value: "s" },
+          },
+        },
+      },
+    })
+
+    // Mutual assignability == type equality (see the union test above).
+    type Expected =
+      | { driver: "pg"; connectionString: string; poolSize: number }
+      | { driver: "awsDataApi"; resourceArn: string; poolSize: number }
+    expectTypeOf(config.db).toExtend<Expected>()
+    expectTypeOf<Expected>().toExtend<typeof config.db>()
+    expectTypeOf(config.db).not.toBeAny()
+  })
+
+  it("keeps shared fields available on both sides of a narrowed discriminant", () => {
+    const config = create("nonprod", {
+      db: {
+        poolSize: { doc: "x", format: Number, value: 10 },
+        variants: {
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            value: "pg",
+          },
+          pg: { connectionString: { doc: "x", format: String, value: "s" } },
+          awsDataApi: {
+            resourceArn: { doc: "x", format: String, value: "s" },
+          },
+        },
+      },
+    })
+
+    if (config.db.driver === "pg") {
+      expectTypeOf(config.db.connectionString).toBeString()
+      expectTypeOf(config.db.poolSize).toBeNumber()
+      // @ts-expect-error resourceArn only exists on the awsDataApi variant
+      config.db.resourceArn
+    } else {
+      expectTypeOf(config.db.resourceArn).toBeString()
+      expectTypeOf(config.db.poolSize).toBeNumber()
+      // @ts-expect-error connectionString only exists on the pg variant
+      config.db.connectionString
     }
   })
 })

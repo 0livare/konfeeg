@@ -874,11 +874,11 @@ describe("environment fallbacks", () => {
 })
 
 describe("variant groups", () => {
-  // The `variants` sub-groups are plain String entries, so they can be shared
-  // via a helper. The discriminant enum entry must be written inline in each
-  // test: an `as const` tuple format is only normalized to a mutable tuple (as
-  // EnumEntry expects) through the contextual typing of an inline schema, not
-  // when returned from a helper.
+  // The variant option sub-groups are plain String entries, so they can be
+  // shared via a helper. The discriminant enum entry must be written inline in
+  // each test: an `as const` tuple format is only normalized to a mutable
+  // tuple (as EnumEntry expects) through the contextual typing of an inline
+  // schema, not when returned from a helper.
   function dbVariants() {
     return {
       pg: {
@@ -921,13 +921,15 @@ describe("variant groups", () => {
     process.env.TEST_VG_DATABASE_URL = "postgres://localhost/app"
     const config = testCreateConfig("nonprod", {
       db: {
-        driver: {
-          doc: "DB driver",
-          format: ["pg", "awsDataApi"] as const,
-          processEnv: "TEST_VG_DRIVER",
-          value: "pg",
+        variants: {
+          ...dbVariants(),
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            processEnv: "TEST_VG_DRIVER",
+            value: "pg",
+          },
         },
-        variants: dbVariants(),
       },
     })
     expect(config.db).toEqual({
@@ -945,13 +947,15 @@ describe("variant groups", () => {
     process.env.TEST_VG_DB_NAME = "appdb"
     const config = testCreateConfig("nonprod", {
       db: {
-        driver: {
-          doc: "DB driver",
-          format: ["pg", "awsDataApi"] as const,
-          processEnv: "TEST_VG_DRIVER",
-          value: "pg",
+        variants: {
+          ...dbVariants(),
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            processEnv: "TEST_VG_DRIVER",
+            value: "pg",
+          },
         },
-        variants: dbVariants(),
       },
     })
     expect(config.db).toEqual({
@@ -971,13 +975,15 @@ describe("variant groups", () => {
     expect(() =>
       testCreateConfig("nonprod", {
         db: {
-          driver: {
-            doc: "DB driver",
-            format: ["pg", "awsDataApi"] as const,
-            processEnv: "TEST_VG_DRIVER",
-            value: "pg",
+          variants: {
+            ...dbVariants(),
+            driver: {
+              doc: "DB driver",
+              format: ["pg", "awsDataApi"] as const,
+              processEnv: "TEST_VG_DRIVER",
+              value: "pg",
+            },
           },
-          variants: dbVariants(),
         },
       }),
     ).not.toThrow()
@@ -989,35 +995,39 @@ describe("variant groups", () => {
     expect(() =>
       testCreateConfig("nonprod", {
         db: {
-          driver: {
-            doc: "DB driver",
-            format: ["pg", "awsDataApi"] as const,
-            processEnv: "TEST_VG_DRIVER",
-            value: "pg",
+          variants: {
+            ...dbVariants(),
+            driver: {
+              doc: "DB driver",
+              format: ["pg", "awsDataApi"] as const,
+              processEnv: "TEST_VG_DRIVER",
+              value: "pg",
+            },
           },
-          variants: dbVariants(),
         },
       }),
     ).toThrow(/db\.connectionString/)
     clearDbEnv()
   })
 
-  it("throws when the discriminant has no matching variant", () => {
+  it("lists only the variant options (not the discriminant key) on an unmatched discriminant", () => {
     clearDbEnv()
     process.env.TEST_VG_DRIVER = "mysql"
     expect(() =>
       testCreateConfig("nonprod", {
         db: {
-          driver: {
-            doc: "DB driver",
-            format: ["pg", "awsDataApi", "mysql"] as const,
-            processEnv: "TEST_VG_DRIVER",
-            value: "pg",
+          variants: {
+            ...dbVariants(),
+            driver: {
+              doc: "DB driver",
+              format: ["pg", "awsDataApi", "mysql"] as const,
+              processEnv: "TEST_VG_DRIVER",
+              value: "pg",
+            },
           },
-          variants: dbVariants(),
         },
       }),
-    ).toThrow(/no matching variant.*pg, awsDataApi/is)
+    ).toThrow(/no matching variant.*\[pg, awsDataApi\]/is)
     clearDbEnv()
   })
 
@@ -1026,12 +1036,14 @@ describe("variant groups", () => {
     const build = () =>
       testCreateConfig("nonprod", {
         db: {
-          driver: {
-            doc: "DB driver",
-            format: ["pg", "awsDataApi"] as const,
-            processEnv: "TEST_VG_DRIVER",
+          variants: {
+            ...dbVariants(),
+            driver: {
+              doc: "DB driver",
+              format: ["pg", "awsDataApi"] as const,
+              processEnv: "TEST_VG_DRIVER",
+            },
           },
-          variants: dbVariants(),
         },
       })
     // No value/default and env unset -> discriminant is missing/required.
@@ -1046,13 +1058,15 @@ describe("variant groups", () => {
     expect(() =>
       testCreateConfig("nonprod", {
         db: {
-          driver: {
-            doc: "DB driver",
-            format: ["pg", "awsDataApi"] as const,
-            processEnv: "TEST_VG_DRIVER",
-            optional: true,
+          variants: {
+            ...dbVariants(),
+            driver: {
+              doc: "DB driver",
+              format: ["pg", "awsDataApi"] as const,
+              processEnv: "TEST_VG_DRIVER",
+              optional: true,
+            },
           },
-          variants: dbVariants(),
         },
       }),
     ).toThrow(/cannot select a variant/i)
@@ -1066,13 +1080,15 @@ describe("variant groups", () => {
     process.env.TEST_VG_DB_NAME = "appdb"
     const config = testCreateConfig("prod", {
       db: {
-        driver: {
-          doc: "DB driver",
-          format: ["pg", "awsDataApi"] as const,
-          nonprod: "pg",
-          prod: "awsDataApi",
+        variants: {
+          ...dbVariants(),
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            nonprod: "pg",
+            prod: "awsDataApi",
+          },
         },
-        variants: dbVariants(),
       },
     })
     expect(config.db).toEqual({
@@ -1090,13 +1106,15 @@ describe("variant groups", () => {
     const config = testCreateConfig("nonprod", {
       services: {
         db: {
-          driver: {
-            doc: "DB driver",
-            format: ["pg", "awsDataApi"] as const,
-            processEnv: "TEST_VG_DRIVER",
-            value: "pg",
+          variants: {
+            ...dbVariants(),
+            driver: {
+              doc: "DB driver",
+              format: ["pg", "awsDataApi"] as const,
+              processEnv: "TEST_VG_DRIVER",
+              value: "pg",
+            },
           },
-          variants: dbVariants(),
         },
       },
     })
@@ -1107,17 +1125,113 @@ describe("variant groups", () => {
     clearDbEnv()
   })
 
-  it("throws when a variant group has more than one discriminant sibling", () => {
+  it("resolves shared sibling fields into the output alongside the variant's fields", () => {
     clearDbEnv()
-    const config = {
+    process.env.TEST_VG_DRIVER = "awsDataApi"
+    process.env.TEST_VG_RESOURCE_ARN = "arn:resource"
+    process.env.TEST_VG_SECRET_ARN = "arn:secret"
+    process.env.TEST_VG_DB_NAME = "appdb"
+    const config = testCreateConfig("nonprod", {
+      db: {
+        poolSize: { doc: "Pool size", format: Number, value: 10 },
+        retry: {
+          attempts: { doc: "Retry attempts", format: Number, value: 3 },
+        },
+        variants: {
+          ...dbVariants(),
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            processEnv: "TEST_VG_DRIVER",
+            value: "pg",
+          },
+        },
+      },
+    })
+    expect(config.db).toEqual({
+      driver: "awsDataApi",
+      resourceArn: "arn:resource",
+      secretArn: "arn:secret",
+      database: "appdb",
+      poolSize: 10,
+      retry: { attempts: 3 },
+    })
+    clearDbEnv()
+  })
+
+  it("throws when `variants` declares no discriminant entry", () => {
+    clearDbEnv()
+    // The pre-1.0 "sibling" form — a discriminant alongside `variants` — is no
+    // longer supported; the discriminant must live inside `variants`.
+    const schema = {
       db: {
         driver: { doc: "DB driver", format: ["pg"] as const, value: "pg" },
-        extra: { doc: "oops", format: String, value: "x" },
         variants: dbVariants(),
       },
     }
-    expect(() => testCreateConfig("nonprod", config as any)).toThrow(
-      /exactly one discriminant/i,
+    expect(() => testCreateConfig("nonprod", schema as any)).toThrow(
+      /exactly one discriminant entry inside "variants"; found \[\]/i,
+    )
+    clearDbEnv()
+  })
+
+  it("throws when `variants` declares more than one discriminant entry", () => {
+    clearDbEnv()
+    const schema = {
+      db: {
+        variants: {
+          ...dbVariants(),
+          driver: { doc: "DB driver", format: ["pg"] as const, value: "pg" },
+          extra: { doc: "oops", format: String, value: "x" },
+        },
+      },
+    }
+    expect(() => testCreateConfig("nonprod", schema as any)).toThrow(
+      /exactly one discriminant entry inside "variants".*driver, extra/is,
+    )
+    clearDbEnv()
+  })
+
+  it("throws when a shared field key collides with a variant field", () => {
+    clearDbEnv()
+    process.env.TEST_VG_DATABASE_URL = "postgres://localhost/app"
+    const schema = {
+      db: {
+        connectionString: { doc: "collision", format: String, value: "x" },
+        variants: {
+          ...dbVariants(),
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            value: "pg",
+          },
+        },
+      },
+    }
+    expect(() => testCreateConfig("nonprod", schema as any)).toThrow(
+      /db\.connectionString: declared both as a shared field and in variant "pg"/,
+    )
+    clearDbEnv()
+  })
+
+  it("throws when a shared field key collides with the discriminant key", () => {
+    clearDbEnv()
+    process.env.TEST_VG_DATABASE_URL = "postgres://localhost/app"
+    const schema = {
+      db: {
+        driver: { doc: "collision", format: String, value: "x" },
+        variants: {
+          ...dbVariants(),
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "awsDataApi"] as const,
+            value: "pg",
+          },
+        },
+      },
+    }
+    expect(() => testCreateConfig("nonprod", schema as any)).toThrow(
+      /db\.driver: shared field key collides with the discriminant key/,
     )
     clearDbEnv()
   })
@@ -1126,7 +1240,6 @@ describe("variant groups", () => {
     clearDbEnv()
     const config = {
       db: {
-        driver: { doc: "DB driver", format: ["pg"] as const, value: "pg" },
         variants: null,
       },
     }
@@ -1141,12 +1254,12 @@ describe("variant groups", () => {
     process.env.TEST_VG_DATABASE_URL = "postgres://localhost/app"
     const config = testCreateConfig("nonprod", {
       db: {
-        driver: {
-          doc: "DB driver",
-          format: ["pg", "aws-data-api"] as const,
-          value: "pg",
-        },
         variants: {
+          driver: {
+            doc: "DB driver",
+            format: ["pg", "aws-data-api"] as const,
+            value: "pg",
+          },
           pg: {
             connectionString: {
               doc: "PG connection string",

@@ -214,8 +214,12 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
 
   // Resolve a variant group: resolve the discriminant enum entry, then resolve
   // ONLY the sub-group selected by its value. Sibling variants are never read,
-  // so only the active variant's sources are required. The discriminant is the
-  // sole sibling of `variants`; its key name is the output property name.
+  // so only the active variant's sources are required.
+  //
+  // The discriminant lives inside `variants` — the sole entry-valued child
+  // (it has a string `doc`) among the group-valued variant options — and its
+  // key name is the output property name. Every sibling of `variants` is a
+  // shared field resolved for all variants.
   function processVariantGroup(
     node: Record<string, any>,
     keyPrefix: string,
@@ -231,16 +235,39 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
       )
       return {}
     }
-    const variants = rawVariants as Record<string, ConfigGroup<E>>
-    const discriminantKeys = Object.keys(node).filter((k) => k !== "variants")
 
+    // Discriminant detection mirrors DiscriminantKeyOf in types.ts: only an
+    // entry has a string-valued `doc`; the variant options are groups.
+    const discriminantKeys = Object.keys(rawVariants).filter((k) => {
+      const child = rawVariants[k]
+      return (
+        child !== null &&
+        typeof child === "object" &&
+        typeof child.doc === "string"
+      )
+    })
     const discriminantKey = discriminantKeys[0]
     if (discriminantKeys.length !== 1 || discriminantKey === undefined) {
       errors.push(
-        `${keyPrefix}: a variant group must have exactly one discriminant entry alongside "variants"; found [${discriminantKeys.join(", ")}]`,
+        `${keyPrefix}: a variant group must declare exactly one discriminant entry inside "variants"; found [${discriminantKeys.join(", ")}]`,
       )
       return {}
     }
+
+    const { [discriminantKey]: _discriminant, ...options } = rawVariants
+    const variants = options as Record<string, ConfigGroup<E>>
+
+    // Every sibling of `variants` is a shared field resolved for all variants.
+    const sharedKeys = Object.keys(node).filter((k) => k !== "variants")
+    if (sharedKeys.includes(discriminantKey)) {
+      errors.push(
+        `${keyPrefix}.${discriminantKey}: shared field key collides with the discriminant key`,
+      )
+      return {}
+    }
+    const sharedGroup = Object.fromEntries(
+      sharedKeys.map((k) => [k, node[k]]),
+    ) as ConfigGroup<E>
 
     if (discriminantKey === "env") {
       throw new Error(
@@ -256,7 +283,7 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
     // pipeline. If it errors, don't pile on further variant errors.
     const errorsBefore = errors.length
     const resolved = processConfig(
-      { [discriminantKey]: node[discriminantKey] } as ConfigGroup<E>,
+      { [discriminantKey]: rawVariants[discriminantKey] } as ConfigGroup<E>,
       keyPrefix,
     )
     if (errors.length > errorsBefore) return {}
@@ -278,13 +305,32 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
       return {}
     }
 
-    // Resolve only the selected variant's fields under the same key prefix, so
-    // their output/error keys are flat under this group (e.g. db.connectionString).
+    // Resolve the shared fields and the selected variant's fields under the
+    // same key prefix, so their output/error keys are flat under this group
+    // (e.g. db.connectionString).
+    const resolvedShared = processConfig(sharedGroup, keyPrefix)
+    const resolvedVariant = processConfig(selected, keyPrefix)
+
+    // A key declared both as a shared field and inside the selected variant is
+    // ambiguous (and its resolved type would be an intersection of the two
+    // declarations), so reject it rather than pick a winner.
+    for (const sharedKey of Object.keys(resolvedShared)) {
+      if (sharedKey in resolvedVariant) {
+        errors.push(
+          `${keyPrefix}.${sharedKey}: declared both as a shared field and in variant "${discriminantValue}"`,
+        )
+      }
+    }
+    if (errors.length > errorsBefore) return {}
+
     // The discriminant is spread last so it always wins: a variant field that
     // (mistakenly) reuses the discriminant's key can't overwrite the selected
     // value, keeping the resolved value consistent with the chosen variant.
-    const resolvedVariant = processConfig(selected, keyPrefix)
-    return { ...resolvedVariant, [discriminantKey]: discriminantValue }
+    return {
+      ...resolvedShared,
+      ...resolvedVariant,
+      [discriminantKey]: discriminantValue,
+    }
   }
 
   let outputConfig = processConfig(inputConfig, "")
