@@ -1125,6 +1125,52 @@ describe("variant groups", () => {
     clearDbEnv()
   })
 
+  it("supports a root-level variant group (whole config is a discriminated union)", () => {
+    clearDbEnv()
+    process.env.TEST_VG_DATABASE_URL = "postgres://localhost/app"
+    const config = testCreateConfig("nonprod", {
+      variants: {
+        ...dbVariants(),
+        driver: {
+          doc: "DB driver",
+          format: ["pg", "awsDataApi"] as const,
+          processEnv: "TEST_VG_DRIVER",
+          value: "pg",
+        },
+      },
+    })
+    expect(config).toEqual({
+      env: "nonprod",
+      driver: "pg",
+      connectionString: "postgres://localhost/app",
+    })
+    clearDbEnv()
+  })
+
+  it("resolves shared siblings of a root-level variant group flat onto the config", () => {
+    clearDbEnv()
+    process.env.TEST_VG_DATABASE_URL = "postgres://localhost/app"
+    const config = testCreateConfig("nonprod", {
+      poolSize: { doc: "Pool size", format: Number, value: 10 },
+      variants: {
+        ...dbVariants(),
+        driver: {
+          doc: "DB driver",
+          format: ["pg", "awsDataApi"] as const,
+          processEnv: "TEST_VG_DRIVER",
+          value: "pg",
+        },
+      },
+    })
+    expect(config).toEqual({
+      env: "nonprod",
+      driver: "pg",
+      connectionString: "postgres://localhost/app",
+      poolSize: 10,
+    })
+    clearDbEnv()
+  })
+
   it("resolves shared sibling fields into the output alongside the variant's fields", () => {
     clearDbEnv()
     process.env.TEST_VG_DRIVER = "awsDataApi"

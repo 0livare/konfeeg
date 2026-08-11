@@ -15,8 +15,7 @@ Validated, strongly-typed, multi-environment config for Node and the browser. De
 | Conditional / variant config  | ✅      | ❌        | ❌            |
 | Custom validations            | ❌      | ✅        | ❌            |
 
-[convict]: https://github.com/mozilla/node-convict/tree/master/packages/convict
-[node-config]: https://github.com/node-config/node-config
+[convict]: https://github.com/mozilla/node-convict/tree/master/packages/convict [node-config]: https://github.com/node-config/node-config
 
 ---
 
@@ -184,125 +183,91 @@ A circular fallback chain (e.g. `{ dev: 'integ', integ: 'dev' }`) throws synchro
 
 ## Variant groups (conditional config)
 
-Sometimes which fields are required depends on the value of another field. A
-**variant group** models this as a discriminated union: an enum entry (the
-_discriminant_) selects which sub-group of fields is resolved. Only the selected
-variant's fields are resolved and required — the others are never read.
+Sometimes which fields are required depends on the value of another field. A **variant group** models this as a discriminated union: an enum entry (the _discriminant_) selects which sub-group of fields is resolved. Only the selected variant's fields are resolved and required — the others are never read.
 
-A variant group is any node with a `variants` map. Inside the map, the
-discriminant is its only entry — everything else is a group holding one
-variant's fields. Any siblings of `variants` are [shared fields](#shared-fields),
-resolved for every variant.
+A variant group is any node with a `variants` map (including the root config object itself). Inside the map, the discriminant is its only direct entry — everything else is a group holding one variant's fields. The groups themselves do not exist in the final config, only the contents of the selected variant group are resolved.
 
-```ts
-const config = createEnvironmentConfig<MyEnvs>()("production", {
-  db: {
-    variants: {
-      // The discriminant. Its key ("driver") is the output property name.
-      driver: {
-        doc: "Database driver",
-        format: ["pg", "awsDataApi"] as const,
-        processEnv: "DB_DRIVER",
-        value: "pg", // default driver (a runtime DB_DRIVER wins)
-      },
-      pg: {
-        connectionString: {
-          doc: "PG URL",
-          format: String,
-          processEnv: "DATABASE_URL",
-        },
-      },
-      awsDataApi: {
-        resourceArn: {
-          doc: "Resource ARN",
-          format: String,
-          processEnv: "DB_RESOURCE_ARN",
-        },
-        secretArn: {
-          doc: "Secret ARN",
-          format: String,
-          processEnv: "DB_SECRET_ARN",
-        },
-        database: { doc: "DB name", format: String, processEnv: "DB_NAME" },
-      },
-    },
-  },
-});
+So the structure is:
 
-// `config.db` is a discriminated union — narrow it with the discriminant:
-if (config.db.driver === "pg") {
-  config.db.connectionString; // string
-} else {
-  config.db.resourceArn; // string
+```js
+// This can exist at the root of the config or at any nested level.
+{
+  variants: {
+    myVariantKey: { doc: "...", format: ["foo", "bar"] as const },
+    foo: { // <-- group for one of the myVariantKey strings (does not exist in final config)
+       fooField1: { doc: "...", format: String },
+       fooField2: { doc: "...", format: Number },
+     },
+    bar: { // <-- group for one of the myVariantKey strings (does not exist in final config)
+      barField1: { doc: "...", format: Boolean },
+      barField2: { doc: "...", format: Array },
+     },
+  }
 }
 ```
 
-Resolves to:
-
-```ts
-| { driver: "pg"; connectionString: string }
-| { driver: "awsDataApi"; resourceArn: string; secretArn: string; database: string }
-```
-
-- The discriminant is a normal enum entry, so it supports the full value
-  resolution order (`value`, per-env fields, `processEnv`/`importMetaEnv`) and
-  [fallbacks](#fallbacks). It's distinguished from the variant groups around it
-  by being an entry (it has a `doc`).
-- Selecting one variant does **not** require the other variants' sources.
-- If the discriminant resolves to a value with no matching variant, resolution
-  throws and lists the valid variant keys.
-- Variant groups nest anywhere a regular entry or group can — inside a group, or
-  inside another variant.
-
-### Shared fields
-
-Siblings of `variants` are fields that every variant needs. They resolve flat,
-alongside the selected variant's fields:
+Here's a complete example of a variant group at the root of the config:
 
 ```ts
 const config = createEnvironmentConfig<MyEnvs>()("production", {
-  db: {
-    // Shared — resolved no matter which variant is selected.
-    poolSize: { doc: "Max pool size", format: Number, value: 10 },
-    variants: {
-      driver: {
-        doc: "Database driver",
-        format: ["pg", "awsDataApi"] as const,
-        processEnv: "DB_DRIVER",
-        value: "pg",
+  // Shared field — a sibling of `variants`, resolved for every variant.
+  poolSize: { doc: "Max pool size", format: Number, value: 10 },
+  variants: {
+    // The discriminant. Its key ("driver") is the output property name.
+    driver: {
+      doc: "Database driver",
+      format: ["pg", "awsDataApi"] as const,
+      processEnv: "DB_DRIVER",
+      value: "pg", // default driver (a runtime DB_DRIVER wins)
+    },
+    pg: {
+      connectionString: {
+        doc: "PG URL",
+        format: String,
+        processEnv: "DATABASE_URL",
       },
-      pg: {
-        connectionString: {
-          doc: "PG URL",
-          format: String,
-          processEnv: "DATABASE_URL",
-        },
+    },
+    awsDataApi: {
+      resourceArn: {
+        doc: "Resource ARN",
+        format: String,
+        processEnv: "DB_RESOURCE_ARN",
       },
-      awsDataApi: {
-        resourceArn: {
-          doc: "Resource ARN",
-          format: String,
-          processEnv: "DB_RESOURCE_ARN",
-        },
+      secretArn: {
+        doc: "Secret ARN",
+        format: String,
+        processEnv: "DB_SECRET_ARN",
       },
+      database: { doc: "DB name", format: String, processEnv: "DB_NAME" },
     },
   },
 });
+
+// The whole `config` is a discriminated union — narrow it with the discriminant:
+if (config.driver === "pg") {
+  config.connectionString; // string
+} else {
+  config.resourceArn; // string
+}
+config.poolSize; // number — a shared field, available on every variant
 ```
 
 Resolves to:
 
 ```ts
-| { driver: "pg"; connectionString: string; poolSize: number }
-| { driver: "awsDataApi"; resourceArn: string; poolSize: number }
+// `config` — each member also carries `env: "dev" | "staging" | "production"`
+| { driver: "pg"; poolSize: number; connectionString: string }
+| { driver: "awsDataApi"; poolSize: number; resourceArn: string; secretArn: string; database: string }
 ```
 
-A shared field whose key collides with the discriminant key or with a field of
-the selected variant is ambiguous and throws.
+- The discriminant is a normal enum entry, so it supports the full value resolution order (`value`, per-env fields, `processEnv`/`importMetaEnv`) and [fallbacks](#fallbacks). It's distinguished from the variant groups around it by being an entry (it has a `doc`).
+- Selecting one variant does **not** require the other variants' sources.
+- If the discriminant resolves to a value with no matching variant, resolution throws and lists the valid variant keys.
+- Variant groups work anywhere a regular entry or group can — at the root of the config (as above), inside a group, or inside another variant.
+- Shared fields (siblings of `variants`) resolve flat alongside the selected variant's fields. A shared field whose key collides with the discriminant key or with a field of the selected variant is ambiguous and throws.
 
 > [!note]
-> `variants` is a reserved key: a group containing a `variants` child is always
-> treated as a variant group.
+> `variants` is a reserved key: a group containing a `variants` child is always treated as a variant group.
 
 ---
 
@@ -351,7 +316,9 @@ function resolveMyCompanyAppEnvironment(): MyCompanyAppEnvironment {
 // Bind the envs once; this plain-`G` builder is the forwarding target.
 const buildConfig = createUncheckedEnvironmentConfig<MyCompanyAppEnvs>();
 
-export function createMyCompanyAppConfig<const G extends ConfigGroup<MyCompanyAppEnvs>>(
+export function createMyCompanyAppConfig<
+  const G extends ConfigGroup<MyCompanyAppEnvs>,
+>(
   schema: G & ValidateSchema<G, MyCompanyAppEnvs>,
 ): ResolveTopLevelConfig<G> & { env: MyCompanyAppEnvironment } {
   return buildConfig(resolveMyCompanyAppEnvironment(), schema);

@@ -681,6 +681,63 @@ describe("variant groups: shared fields", () => {
   })
 })
 
+describe("variant groups: root level", () => {
+  it("resolves a root-level variant group to a discriminated union over the whole config", () => {
+    const rooted = create("nonprod", {
+      variants: {
+        driver: {
+          doc: "DB driver",
+          format: ["pg", "awsDataApi"] as const,
+          value: "pg",
+        },
+        pg: { connectionString: { doc: "x", format: String, value: "s" } },
+        awsDataApi: {
+          resourceArn: { doc: "x", format: String, value: "s" },
+        },
+      },
+    })
+
+    // Mutual assignability == type equality (see the nested union test). Each
+    // member also carries the `env` property intersected onto the whole config.
+    type Expected =
+      | { env: EnvName<TestEnvs>; driver: "pg"; connectionString: string }
+      | { env: EnvName<TestEnvs>; driver: "awsDataApi"; resourceArn: string }
+    expectTypeOf(rooted).toExtend<Expected>()
+    expectTypeOf<Expected>().toExtend<typeof rooted>()
+    expectTypeOf(rooted).not.toBeAny()
+  })
+
+  it("narrows the whole config on the root discriminant and keeps env + shared fields", () => {
+    const config = create("nonprod", {
+      poolSize: { doc: "x", format: Number, value: 10 },
+      variants: {
+        driver: {
+          doc: "DB driver",
+          format: ["pg", "awsDataApi"] as const,
+          value: "pg",
+        },
+        pg: { connectionString: { doc: "x", format: String, value: "s" } },
+        awsDataApi: {
+          resourceArn: { doc: "x", format: String, value: "s" },
+        },
+      },
+    })
+
+    expectTypeOf(config.env).toEqualTypeOf<EnvName<TestEnvs>>()
+    if (config.driver === "pg") {
+      expectTypeOf(config.connectionString).toBeString()
+      expectTypeOf(config.poolSize).toBeNumber()
+      // @ts-expect-error resourceArn only exists on the awsDataApi variant
+      config.resourceArn
+    } else {
+      expectTypeOf(config.resourceArn).toBeString()
+      expectTypeOf(config.poolSize).toBeNumber()
+      // @ts-expect-error connectionString only exists on the pg variant
+      config.connectionString
+    }
+  })
+})
+
 describe("wrapper forwarding via the unchecked sink", () => {
   const sink = createUncheckedEnvironmentConfig<TestEnvs>()
 
