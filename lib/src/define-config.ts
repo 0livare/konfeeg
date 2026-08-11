@@ -1,4 +1,7 @@
-import { createEnvironmentConfig } from "./create-config.js"
+import {
+  createEnvironmentConfig,
+  createUncheckedEnvironmentConfig,
+} from "./create-config.js"
 import type {
   ConfigGroup,
   ResolveTopLevelConfig,
@@ -46,4 +49,21 @@ export function defineEnvironmentConfig<E extends EnvsShape>() {
       create(env, inputConfig as any, options) as ResolveTopLevelConfig<G> & {
         env: EnvName<E>
       }
+}
+
+/**
+ * Like {@link defineEnvironmentConfig}, but its schema parameter is a plain
+ * `G` with no `ValidateSchema` intersection. This is the schema-first
+ * counterpart of {@link createUncheckedEnvironmentConfig}; use it as a
+ * forwarding target for wrapper functions. See that function for why a
+ * plain-`G` sink keeps validating wrappers cast-free.
+ */
+export function defineUncheckedEnvironmentConfig<E extends EnvsShape>() {
+  const create = createUncheckedEnvironmentConfig<E>()
+  return <const G extends ConfigGroup<E>>(
+    inputConfig: G,
+    options?: CreateConfigOptions<E>,
+  ): ((env: EnvName<E>) => ResolveTopLevelConfig<G> & { env: EnvName<E> }) =>
+    (env: EnvName<E>) =>
+      create(env, inputConfig, options)
 }

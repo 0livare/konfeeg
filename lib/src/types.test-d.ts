@@ -14,7 +14,12 @@
  */
 import { describe, expectTypeOf, it } from "vitest"
 
-import { createEnvironmentConfig, defineEnvironmentConfig } from "./index.js"
+import {
+  createEnvironmentConfig,
+  createUncheckedEnvironmentConfig,
+  defineEnvironmentConfig,
+} from "./index.js"
+import type { ConfigGroup, ResolveTopLevelConfig, ValidateSchema } from "./types.js"
 import type { ResolveEntryType } from "./types.js"
 import type {
   CreateConfigOptions,
@@ -673,5 +678,46 @@ describe("variant groups: shared fields", () => {
       // @ts-expect-error connectionString only exists on the pg variant
       config.db.connectionString
     }
+  })
+})
+
+describe("wrapper forwarding via the unchecked sink", () => {
+  const sink = createUncheckedEnvironmentConfig<TestEnvs>()
+
+  // A wrapper that validates at its own boundary and forwards into the plain-`G`
+  // sink — cast-free, and still validating enum literals at its call sites.
+  function wrap<const G extends ConfigGroup<TestEnvs>>(
+    env: EnvName<TestEnvs>,
+    schema: G & ValidateSchema<G, TestEnvs>,
+  ): ResolveTopLevelConfig<G> & { env: EnvName<TestEnvs> } {
+    return sink(env, schema)
+  }
+
+  // A second-level generic forwarder over the first — also cast-free.
+  function wrapLambda<const G extends ConfigGroup<TestEnvs>>(
+    schema: G & ValidateSchema<G, TestEnvs>,
+  ): ResolveTopLevelConfig<G> & { env: EnvName<TestEnvs> } {
+    return sink("nonprod", schema)
+  }
+
+  it("resolves entry types through the wrapper", () => {
+    const config = wrap("nonprod", {
+      mode: { doc: "m", format: ["a", "b"] as const, value: "a" },
+      port: { doc: "p", format: Number, value: 3000 },
+    })
+    expectTypeOf(config.mode).toEqualTypeOf<"a" | "b">()
+    expectTypeOf(config.port).toBeNumber()
+    expectTypeOf(config.env).toEqualTypeOf<EnvName<TestEnvs>>()
+  })
+
+  it("validates enum literals at the wrapper call site", () => {
+    wrapLambda({
+      mode: {
+        doc: "m",
+        format: ["a", "b"] as const,
+        // @ts-expect-error "c" is not a member of the enum format
+        value: "c",
+      },
+    })
   })
 })

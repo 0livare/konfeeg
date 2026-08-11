@@ -1,5 +1,11 @@
-export { createEnvironmentConfig } from "./create-config.js"
-export { defineEnvironmentConfig } from "./define-config.js"
+export {
+  createEnvironmentConfig,
+  createUncheckedEnvironmentConfig,
+} from "./create-config.js"
+export {
+  defineEnvironmentConfig,
+  defineUncheckedEnvironmentConfig,
+} from "./define-config.js"
 export type {
   ConfigGroup,
   ResolveConfigGroup,

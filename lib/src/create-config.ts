@@ -78,6 +78,40 @@ export function createEnvironmentConfig<E extends EnvsShape>() {
     buildConfig<E, G>(env, inputConfig as G, options)
 }
 
+/**
+ * Like {@link createEnvironmentConfig}, but its schema parameter is a plain
+ * `G` with no `ValidateSchema` intersection. Intended as a *forwarding target*
+ * for wrapper functions that bind the envs and re-expose the builder.
+ *
+ * A wrapper that validates at its own boundary (parameter typed
+ * `G & ValidateSchema<G, E>`) cannot forward into {@link createEnvironmentConfig}:
+ * TS infers that call's `G` as the whole `G & ValidateSchema<G, E>`, re-applying
+ * `ValidateSchema` to an already-validated type and producing an unsatisfiable
+ * double-wrapped parameter. Forwarding into this plain-`G` sink avoids the
+ * re-application, so the wrapper stays cast-free while still validating enum
+ * literals at its own call sites. Runtime behavior is identical — enum values
+ * are validated at runtime either way.
+ *
+ * @example
+ * ```ts
+ * const sink = createUncheckedEnvironmentConfig<MyEnvs>()
+ * function createConfig<const G extends ConfigGroup<MyEnvs>>(
+ *   env: EnvName<MyEnvs>,
+ *   schema: G & ValidateSchema<G, MyEnvs>, // validated at the literal here
+ * ) {
+ *   return sink(env, schema) // cast-free forward
+ * }
+ * ```
+ */
+export function createUncheckedEnvironmentConfig<E extends EnvsShape>() {
+  return <const G extends ConfigGroup<E>>(
+    env: EnvName<E>,
+    inputConfig: G,
+    options?: CreateConfigOptions<E>,
+  ): ResolveTopLevelConfig<G> & { env: EnvName<E> } =>
+    buildConfig<E, G>(env, inputConfig, options)
+}
+
 function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
   env: EnvName<E>,
   inputConfig: G,

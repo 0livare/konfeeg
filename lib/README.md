@@ -322,13 +322,15 @@ const config = buildConfig(process.env.APP_ENV as any);
 
 ## Building your own wrapper
 
-Every type needed to write a wrapper is exported, so you can bake your org's environment names and env-resolution logic into a single function and have every consumer call that instead of `createEnvironmentConfig` directly.
+If you need to create several configs in your project that all use the same environment names, you can wrap `createEnvironmentConfig` in a function that pre-defines your org's env names and env-resolution logic.
+
+When creating a wrapper, in order to keep strong typing and avoid type casts, a functionally equivalent `createUncheckedEnvironmentConfig` function is provided to keep TypeScript happy.
 
 ```ts
 import {
-  createEnvironmentConfig,
+  createUncheckedEnvironmentConfig,
   type ConfigGroup,
-  type ResolveConfigGroup,
+  type ResolveTopLevelConfig,
   type ValidateSchema,
 } from "konfeeg";
 
@@ -346,16 +348,17 @@ function resolveMyCompanyAppEnvironment(): MyCompanyAppEnvironment {
   return env as MyCompanyAppEnvironment;
 }
 
+// Bind the envs once; this plain-`G` builder is the forwarding target.
+const buildConfig = createUncheckedEnvironmentConfig<MyCompanyAppEnvs>();
+
 export function createMyCompanyAppConfig<const G extends ConfigGroup<MyCompanyAppEnvs>>(
   schema: G & ValidateSchema<G, MyCompanyAppEnvs>,
-): ResolveConfigGroup<G> & { env: MyCompanyAppEnvironment } {
-  // The cast is required — see note below.
-  return createEnvironmentConfig<MyCompanyAppEnvs>(
-    resolveMyCompanyAppEnvironment(),
-    schema as never,
-  );
+): ResolveTopLevelConfig<G> & { env: MyCompanyAppEnvironment } {
+  return buildConfig(resolveMyCompanyAppEnvironment(), schema);
 }
 ```
+
+This composes to any depth, a second generic forwarder (e.g. `createLambdaConfig`) can declare its own `G & ValidateSchema<G, E>` parameter and forward into the same sink, staying cast-free while validating enum literals at each boundary.
 
 Consumers now declare only a schema; the env names and the active environment come from the wrapper:
 
