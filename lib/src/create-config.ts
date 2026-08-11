@@ -3,7 +3,7 @@
 import { validateAndCoerce } from "./format.js"
 import type {
   ConfigGroup,
-  ResolveConfigGroup,
+  ResolveTopLevelConfig,
   ValidateSchema,
 } from "./types.js"
 import type {
@@ -74,7 +74,7 @@ export function createEnvironmentConfig<E extends EnvsShape>() {
     env: EnvName<E>,
     inputConfig: G & ValidateSchema<G, E>,
     options?: CreateConfigOptions<E>,
-  ): ResolveConfigGroup<G> & { env: EnvName<E> } =>
+  ): ResolveTopLevelConfig<G> & { env: EnvName<E> } =>
     buildConfig<E, G>(env, inputConfig as G, options)
 }
 
@@ -82,7 +82,7 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
   env: EnvName<E>,
   inputConfig: G,
   options?: CreateConfigOptions<E>,
-): ResolveConfigGroup<G> & { env: EnvName<E> } {
+): ResolveTopLevelConfig<G> & { env: EnvName<E> } {
   const errors: string[] = []
 
   // Resolve the per-environment lookup chain once for the active env.
@@ -333,7 +333,13 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
     }
   }
 
-  let outputConfig = processConfig(inputConfig, "")
+  // The root schema may itself be a variant group, making the whole config a
+  // discriminated union; detected structurally by a top-level `variants` key,
+  // exactly as nested variant groups are.
+  let outputConfig =
+    "variants" in inputConfig
+      ? processVariantGroup(inputConfig as Record<string, any>, "")
+      : processConfig(inputConfig, "")
 
   if (errors.length > 0) {
     console.error("Environment config validation failed", errors)
@@ -346,7 +352,7 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
     env,
     ...outputConfig,
   }
-  return outputConfig as ResolveConfigGroup<G> & { env: EnvName<E> }
+  return outputConfig as ResolveTopLevelConfig<G> & { env: EnvName<E> }
 }
 
 /**

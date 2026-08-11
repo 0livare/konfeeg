@@ -158,6 +158,14 @@ export type ResolveConfigGroup<G> = {
       : ResolveConfigGroup<G[K]>
 }
 
+// Resolves a top-level schema. Unlike a nested group — whose variant children
+// are detected per-key by ResolveConfigGroup — the root schema can itself be a
+// variant group, in which case the ENTIRE config resolves to a discriminated
+// union. `& { env }` on the caller then distributes across every union member.
+export type ResolveTopLevelConfig<G> = G extends { variants: unknown }
+  ? ResolveVariantGroup<G>
+  : ResolveConfigGroup<G>
+
 //
 // Format validation
 //

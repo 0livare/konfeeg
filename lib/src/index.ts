@@ -3,6 +3,7 @@ export { defineEnvironmentConfig } from "./define-config.js"
 export type {
   ConfigGroup,
   ResolveConfigGroup,
+  ResolveTopLevelConfig,
   ResolveVariantGroup,
   // ValidateSchema appears in createEnvironmentConfig's parameter type, so it
   // must be nameable: a consumer that wraps or re-exports the curried function

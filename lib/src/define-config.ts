@@ -1,7 +1,7 @@
 import { createEnvironmentConfig } from "./create-config.js"
 import type {
   ConfigGroup,
-  ResolveConfigGroup,
+  ResolveTopLevelConfig,
   ValidateSchema,
 } from "./types.js"
 import type { CreateConfigOptions, EnvName, EnvsShape } from "./util-types.js"
@@ -41,7 +41,9 @@ export function defineEnvironmentConfig<E extends EnvsShape>() {
   return <const G extends ConfigGroup<E>>(
     inputConfig: G & ValidateSchema<G, E>,
     options?: CreateConfigOptions<E>,
-  ): ((env: EnvName<E>) => ResolveConfigGroup<G> & { env: EnvName<E> }) =>
+  ): ((env: EnvName<E>) => ResolveTopLevelConfig<G> & { env: EnvName<E> }) =>
     (env: EnvName<E>) =>
-      create(env, inputConfig as any, options)
+      create(env, inputConfig as any, options) as ResolveTopLevelConfig<G> & {
+        env: EnvName<E>
+      }
 }
