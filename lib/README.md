@@ -115,7 +115,7 @@ config.mongo.poolSize; // number
 | `format`                          | optional | Validation format — see [below](#formats). If omitted, no validation is applied; the resolved type is inferred from `value`/per-env fields, or `any` if none are declared |
 | `value`                           | optional | Constant shared across all environments (lowest priority)                                                                                                                 |
 | `processEnv`                      | optional | `process.env` key — runtime override (highest priority)                                                                                                                   |
-| `importMetaEnv`                   | optional | `import.meta.env` key — runtime override (highest priority)                                                                                                               |
+| `importMetaEnv`                   | optional | Browser environment key — runtime override (highest priority), optionally supplied through `options.importMetaEnv`; see [browser environments](#browser-environments-and-commonjsci) |
 | `optional`                        | optional | When `true`, missing value will not throw. Resolves to `default` field or `undefined`                                                                                     |
 | `default`                         | optional | Fallback to replace `undefined` when `optional: true` and no value is found                                                                                               |
 | env keys (e.g. `dev`, `staging`…) | optional | Per-environment value overrides. _(These are the env names that you pass in in)_                                                                                          |
@@ -146,6 +146,57 @@ When multiple sources are declared on the same entry, the highest-priority sourc
 | 3 — highest | `processEnv` / `importMetaEnv`     | Secrets, local overrides         |
 | 2           | Per-env fields (`dev`, `staging`…) | Environment-specific values      |
 | 1 — lowest  | `value`                            | Constants shared across all envs |
+
+---
+
+## Browser environments and CommonJS/CI
+
+Vite automatically selects konfeeg's browser entry point, which reads
+`import.meta.env`. No extra option or different import is needed:
+
+```ts
+const config = createEnvironmentConfig<MyEnvs>()(
+  "staging",
+  {
+    apiUrl: {
+      doc: "API URL",
+      format: "url",
+      importMetaEnv: "VITE_API_URL",
+      value: "https://api.example.com",
+    },
+  },
+);
+```
+
+For tests or other runtime sources, optionally pass a map through the options
+argument:
+
+```ts
+const config = createConfig(env, schema, {
+  importMetaEnv: { VITE_API_URL: "https://test.example.com" },
+});
+
+// Disable browser overrides and use the schema's configured values.
+const defaults = createConfig(env, schema, { importMetaEnv: {} });
+```
+
+An explicit map replaces the browser source rather than merging with it.
+Runtime values have the highest precedence and undergo normal validation and
+coercion. If a key is missing or `undefined`, resolution uses configured
+per-environment values, fallbacks, static `value`, or optional `default`.
+Required values still throw if no source resolves.
+
+Only the browser ESM entry point references `import.meta`. Node imports and
+CommonJS consumers use the universal artifacts, which do not contain it.
+Node-targeted esbuild bundles (including CDK Lambda assets) therefore do not
+need a special option to avoid `empty-import-meta` warnings. Two-argument
+backend calls and `processEnv` behavior are unchanged.
+
+Automatic lookup requires a bundler that selects the `browser` export
+condition for ESM imports and supplies `import.meta.env`, such as Vite.
+Without that support (including native browser modules), provide the map
+explicitly or rely on configured values. CommonJS `require` always uses
+the universal entry point, even when the `browser` condition is enabled.
 
 ---
 

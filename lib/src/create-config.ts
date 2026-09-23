@@ -189,11 +189,7 @@ function buildConfig<E extends EnvsShape, G extends ConfigGroup<E>>(
         if (runtimeOverride !== undefined) value = runtimeOverride
       } else if ("importMetaEnv" in configEntry) {
         const runtimeOverride =
-          // @ts-expect-error import.meta.env may not be defined in Node builds
-          typeof import.meta !== "undefined" && import.meta.env
-            ? // @ts-expect-error import.meta.env may not be defined in Node builds
-              import.meta.env[configEntry.importMetaEnv as string]
-            : undefined
+          options?.importMetaEnv?.[configEntry.importMetaEnv as string]
         if (runtimeOverride !== undefined) value = runtimeOverride
       }
 

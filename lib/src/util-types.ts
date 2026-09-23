@@ -84,4 +84,11 @@ export type CreateConfigOptions<E extends EnvsShape> = {
    * {@link Fallbacks} for details.
    */
   fallbacks?: Fallbacks<E>
+  /**
+   * Override the runtime values for entries declaring `importMetaEnv`.
+   * Browser builds default to the bundler's environment object; Node builds
+   * have no browser source unless supplied here. An explicit map replaces
+   * the entire source; pass {} to use only configured values and defaults.
+   */
+  importMetaEnv?: Readonly<Record<string, unknown>>
 }

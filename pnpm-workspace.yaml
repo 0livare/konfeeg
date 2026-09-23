@@ -3,6 +3,7 @@ packages:
   - "demo/*"
 
 allowBuilds:
+  esbuild: true
   nx: false
 
 catalog:

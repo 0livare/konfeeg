@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it } from "vitest"
-import { createEnvironmentConfig, defineEnvironmentConfig } from "./index.js"
+import {
+  createEnvironmentConfig,
+  createUncheckedEnvironmentConfig,
+  defineEnvironmentConfig,
+  defineUncheckedEnvironmentConfig,
+} from "./index.js"
 
 declare const process: { env: Record<string, string | undefined> }
 
@@ -126,6 +131,123 @@ describe("value sources", () => {
       },
     })
     expect(config.key).toBe("static-value")
+  })
+})
+
+describe("injected browser environment", () => {
+  const schema = {
+    key: {
+      doc: "test",
+      format: String,
+      importMetaEnv: "VITE_KEY",
+      value: "static",
+      nonprod: "nonprod",
+      prod: "prod",
+    },
+  }
+
+  it.each([
+    "nonprod",
+    "local",
+  ] as const)("overrides static, per-env, and fallback values in %s", (env) => {
+    const config = testCreateConfig(env, schema, {
+      importMetaEnv: { VITE_KEY: "browser" },
+      fallbacks: { local: "nonprod" },
+    })
+    expect(config.key).toBe("browser")
+  })
+
+  it("preserves two-argument calls without a browser environment", () => {
+    expect(testCreateConfig("nonprod", schema).key).toBe("nonprod")
+    expect(testCreateConfig("local", schema).key).toBe("static")
+    expect(
+      testCreateConfig("local", schema, {
+        fallbacks: { local: "nonprod" },
+      }).key,
+    ).toBe("nonprod")
+  })
+
+  it.each([
+    {},
+    { VITE_KEY: undefined },
+  ])("ignores absent or undefined injected keys: %j", (importMetaEnv) => {
+    expect(testCreateConfig("nonprod", schema, { importMetaEnv }).key).toBe(
+      "nonprod",
+    )
+  })
+
+  it("uses optional defaults or undefined when no browser values are supplied", () => {
+    const config = testCreateConfig("local", {
+      withDefault: {
+        doc: "test",
+        format: Number,
+        importMetaEnv: "VITE_PORT",
+        optional: true,
+        default: 3000,
+      },
+      withoutDefault: {
+        doc: "test",
+        format: String,
+        importMetaEnv: "VITE_MISSING",
+        optional: true,
+      },
+    })
+    expect(config.withDefault).toBe(3000)
+    expect(config.withoutDefault).toBeUndefined()
+  })
+
+  it("coerces injected strings and preserves falsy values in nested groups", () => {
+    const config = testCreateConfig(
+      "local",
+      {
+        nested: {
+          port: { doc: "test", format: Number, importMetaEnv: "VITE_PORT" },
+          enabled: {
+            doc: "test",
+            format: Boolean,
+            importMetaEnv: "DEV",
+            value: true,
+          },
+          text: {
+            doc: "test",
+            format: String,
+            importMetaEnv: "VITE_TEXT",
+            value: "default",
+          },
+        },
+      },
+      { importMetaEnv: { VITE_PORT: "0", DEV: false, VITE_TEXT: "" } },
+    )
+    expect(config.nested).toEqual({ port: 0, enabled: false, text: "" })
+  })
+
+  it("still rejects missing required and invalid injected values", () => {
+    const requiredSchema = {
+      port: { doc: "test", format: Number, importMetaEnv: "VITE_PORT" },
+    }
+    expect(() => testCreateConfig("local", requiredSchema)).toThrow(
+      /Missing required config value/,
+    )
+    expect(() =>
+      testCreateConfig("local", requiredSchema, {
+        importMetaEnv: { VITE_PORT: "invalid" },
+      }),
+    ).toThrow(/port/)
+  })
+
+  it("forwards injected values through schema-first and unchecked builders", () => {
+    const options = { importMetaEnv: { VITE_KEY: "browser" } }
+    expect(
+      defineEnvironmentConfig<TestEnvs>()(schema, options)("local").key,
+    ).toBe("browser")
+    expect(
+      createUncheckedEnvironmentConfig<TestEnvs>()("local", schema, options)
+        .key,
+    ).toBe("browser")
+    expect(
+      defineUncheckedEnvironmentConfig<TestEnvs>()(schema, options)("local")
+        .key,
+    ).toBe("browser")
   })
 })
 

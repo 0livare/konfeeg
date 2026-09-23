@@ -13,6 +13,7 @@
     ".": {
       "import": {
         "types": "./dist/index.d.mts",
+        "browser": "./dist/browser.mjs",
         "default": "./dist/index.mjs"
       },
       "require": {
@@ -27,7 +28,8 @@
   "scripts": {
     "dev": "tsdown --watch",
     "build": "tsdown",
-    "test": "vitest --run",
+    "test": "vitest --run && pnpm run test:build",
+    "test:build": "pnpm run build && node --test test/build.mjs",
     "pub": "pnpm run build && npx bumpp && pnpm publish"
   },
   "nx": {
@@ -52,9 +54,11 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:default",
+    "esbuild": "^0.28.0",
     "tsdown": "^0.22.2",
     "typescript": "catalog:default",
     "typescript5": "npm:typescript@5.9.3",
+    "vite": "^8.0.12",
     "vitest": "^4.1.8"
   },
   "keywords": [

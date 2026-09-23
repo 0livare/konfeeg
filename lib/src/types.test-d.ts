@@ -77,9 +77,10 @@ describe("utility types", () => {
     }>()
   })
 
-  it("CreateConfigOptions exposes an optional fallbacks map", () => {
+  it("CreateConfigOptions exposes optional fallbacks and browser values", () => {
     expectTypeOf<CreateConfigOptions<TestEnvs>>().toEqualTypeOf<{
       fallbacks?: Fallbacks<TestEnvs>
+      importMetaEnv?: Readonly<Record<string, unknown>>
     }>()
   })
 })
